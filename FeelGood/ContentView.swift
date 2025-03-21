@@ -255,6 +255,21 @@ struct CheckInView: View {
         }
     }
     
+    var moodRatingColor: Color {
+        switch Int(moodRating) {
+        case 1...3:
+            return .red.opacity(0.7)
+        case 4...6:
+            return .yellow.opacity(0.7)
+        case 7...8:
+            return .green.opacity(0.7)
+        case 9...10:
+            return Color(hex: "00FF00").opacity(0.7) // Bright green
+        default:
+            return .green.opacity(0.7)
+        }
+    }
+    
     var body: some View {
         ZStack {
             // Background gradient
@@ -312,96 +327,69 @@ struct CheckInView: View {
                     
                     // Improved slider for mood rating
                     VStack(spacing: 5) {
+                        // Custom slider track
                         ZStack(alignment: .leading) {
                             // Background track
                             Capsule()
-                                .frame(height: 8)
+                                .frame(height: 12)
                                 .foregroundColor(.white.opacity(0.3))
                             
                             // Filled portion
+                            let fillWidth = max(0, CGFloat((moodRating - 1) / 9) * UIScreen.main.bounds.width * 0.75)
                             Capsule()
-                                .frame(width: CGFloat((moodRating - 1) / 9) * UIScreen.main.bounds.width * 0.75, height: 8)
-                                .foregroundColor(Color.green.opacity(0.7))
-                        }
-                        .frame(width: UIScreen.main.bounds.width * 0.75)
-                        .overlay(
-                            // Custom slider thumb
+                                .frame(width: fillWidth, height: 12)
+                                .foregroundColor(moodRatingColor)
+                                
+                            // Slider thumb directly on the track
                             Circle()
                                 .fill(.white)
-                                .frame(width: 28, height: 28)
+                                .frame(width: 35, height: 35)
                                 .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
-                                .offset(x: CGFloat((moodRating - 1) / 9) * UIScreen.main.bounds.width * 0.75 - 14)
-                                .gesture(
-                                    DragGesture(minimumDistance: 0)
-                                        .onChanged { value in
-                                            let width = UIScreen.main.bounds.width * 0.75
-                                            let percentage = min(max(0, Double(value.location.x / width)), 1.0)
-                                            let newRating = 1.0 + percentage * 9.0
-                                            
-                                            // Only trigger animation if the rating category changes
-                                            let oldCategory = Int(moodRating) / 3
-                                            let newCategory = Int(newRating) / 3
-                                            
-                                            if oldCategory != newCategory {
-                                                animateEmoji = true
-                                                
-                                                // Add haptic feedback
-                                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                                generator.impactOccurred()
-                                                
-                                                // Reset animation
-                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                                    animateEmoji = false
-                                                }
-                                            }
-                                            
-                                            moodRating = newRating.rounded()
-                                        }
+                                .overlay(
+                                    Text("\(Int(moodRating))")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(userModel.activeTheme.colors[0])
                                 )
-                        )
-                        
-                        // Rating indicators
-                        HStack {
-                            ForEach([1, 4, 7, 10], id: \.self) { rating in
-                                if rating == 1 {
-                                    Text("\(rating)")
-                                        .font(.caption2)
-                                        .foregroundColor(.white.opacity(0.7))
-                                        .frame(width: 20, alignment: .leading)
-                                } else if rating == 10 {
-                                    Spacer()
-                                    Text("\(rating)")
-                                        .font(.caption2)
-                                        .foregroundColor(.white.opacity(0.7))
-                                        .frame(width: 20, alignment: .trailing)
-                                } else {
-                                    Spacer()
-                                    Text("\(rating)")
-                                        .font(.caption2)
-                                        .foregroundColor(.white.opacity(0.7))
-                                        .frame(width: 20, alignment: .center)
-                                    Spacer()
-                                }
-                            }
+                                .offset(x: fillWidth - 17.5) // Center the circle on the progress point
                         }
                         .frame(width: UIScreen.main.bounds.width * 0.75)
-                    }
-                    
-                    // Rating number in circle
-                    ZStack {
-                        Circle()
-                            .fill(.white)
-                            .frame(width: 45, height: 45)
-                            .shadow(color: .black.opacity(0.1), radius: 5)
                         
-                        Text("\(Int(moodRating))")
-                            .font(.title2.bold())
-                            .foregroundColor(userModel.activeTheme.colors[0])
+                        // Slider interaction overlay
+                        Color.clear
+                            .frame(width: UIScreen.main.bounds.width * 0.75, height: 44)
+                            .contentShape(Rectangle())
+                            .gesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onChanged { value in
+                                        let width = UIScreen.main.bounds.width * 0.75
+                                        let xPos = min(max(0, value.location.x), width)
+                                        let percentage = Double(xPos / width)
+                                        let newRating = 1.0 + percentage * 9.0
+                                        
+                                        // Only trigger animation if the rating category changes
+                                        let oldCategory = Int(moodRating) / 3
+                                        let newCategory = Int(newRating) / 3
+                                        
+                                        if oldCategory != newCategory {
+                                            animateEmoji = true
+                                            
+                                            // Add haptic feedback
+                                            let generator = UIImpactFeedbackGenerator(style: .light)
+                                            generator.impactOccurred()
+                                            
+                                            // Reset animation
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                                animateEmoji = false
+                                            }
+                                        }
+                                        
+                                        moodRating = newRating.rounded()
+                                    }
+                            )
                     }
-                    .padding(.top, 5)
                     
                     Spacer()
-                        .frame(height: 20)
+                        .frame(height: 30)
                     
                     Text("Tell me about it")
                         .font(.title3)
