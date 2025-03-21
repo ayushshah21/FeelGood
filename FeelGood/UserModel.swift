@@ -28,11 +28,12 @@ struct MoodEntry: Identifiable, Codable {
     var audioURL: String?
     var timestamp: Date
     var checkInType: CheckInType
-    
-    enum CheckInType: String, Codable {
-        case morning
-        case evening
-    }
+}
+
+// Make CheckInType accessible outside MoodEntry
+enum CheckInType: String, Codable {
+    case morning
+    case evening
 }
 
 // Main user model for preferences and data
@@ -43,6 +44,8 @@ class UserModel: ObservableObject {
     
     // Theme gradient options
     let themeGradients: [ThemeGradient] = [
+        // Add the image's purple gradient as the first option (default)
+        ThemeGradient(name: "vybeCheck", colors: [Color(hex: "6053E8"), Color(hex: "7E78FF")]),
         ThemeGradient(name: "lavender", colors: [Color(hex: "8B7FF0"), Color(hex: "7E6EF4")]),
         ThemeGradient(name: "sunset", colors: [Color(hex: "FF9190"), Color(hex: "FFC389")]),
         ThemeGradient(name: "ocean", colors: [Color(hex: "00B4DB"), Color(hex: "0083B0")]),
@@ -90,21 +93,80 @@ class UserModel: ObservableObject {
     }
     
     // Add a new mood entry
-    func addMoodEntry(rating: Int, note: String? = nil, audioURL: String? = nil, checkInType: MoodEntry.CheckInType) {
-        // Create new entry
-        let newEntry = MoodEntry(
-            rating: rating,
-            note: note,
-            audioURL: audioURL,
-            timestamp: Date(),
-            checkInType: checkInType
-        )
-        
-        // Add to local array
-        moodEntries.append(newEntry)
+    func addMoodEntry(rating: Int, note: String? = nil, audioURL: String? = nil, checkInType: CheckInType) {
+        // Check if there's an existing entry for today with the same check-in type
+        if let index = getTodayEntryIndex(forType: checkInType) {
+            // Update existing entry
+            moodEntries[index] = MoodEntry(
+                id: moodEntries[index].id,
+                rating: rating,
+                note: note,
+                audioURL: audioURL,
+                timestamp: Date(),
+                checkInType: checkInType
+            )
+        } else {
+            // Create new entry
+            let newEntry = MoodEntry(
+                rating: rating,
+                note: note,
+                audioURL: audioURL,
+                timestamp: Date(),
+                checkInType: checkInType
+            )
+            
+            // Add to local array
+            moodEntries.append(newEntry)
+        }
         
         // Save changes
         savePreferences()
+    }
+    
+    // Get today's entry index for a specific check-in type (morning/evening)
+    private func getTodayEntryIndex(forType type: CheckInType) -> Int? {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        return moodEntries.firstIndex(where: { entry in
+            let entryDay = calendar.startOfDay(for: entry.timestamp)
+            return calendar.isDate(entryDay, inSameDayAs: today) && entry.checkInType == type
+        })
+    }
+    
+    // Get today's mood rating for a specific check-in type
+    func getTodayMood(forType type: CheckInType) -> Int? {
+        if let index = getTodayEntryIndex(forType: type) {
+            return moodEntries[index].rating
+        }
+        return nil
+    }
+    
+    // Get number of entries for today
+    func getTodayEntriesCount() -> Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        return moodEntries.filter { entry in
+            let entryDay = calendar.startOfDay(for: entry.timestamp)
+            return calendar.isDate(entryDay, inSameDayAs: today)
+        }.count
+    }
+    
+    // Get the most recent entry
+    func getLastEntry() -> MoodEntry? {
+        return moodEntries.sorted { $0.timestamp > $1.timestamp }.first
+    }
+    
+    // Get today's entries
+    func getTodayEntries() -> [MoodEntry] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        return moodEntries.filter { entry in
+            let entryDay = calendar.startOfDay(for: entry.timestamp)
+            return calendar.isDate(entryDay, inSameDayAs: today)
+        }.sorted { $0.timestamp > $1.timestamp }
     }
     
     // Get average mood for a specific time period

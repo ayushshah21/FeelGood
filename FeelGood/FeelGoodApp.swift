@@ -14,12 +14,12 @@ struct FeelGoodApp: App {
 
   var body: some Scene {
     WindowGroup {
-      NavigationView {
+      NavigationStack {
         ContentView()
-          .environmentObject(userModel)
-          .preferredColorScheme(.light)
       }
+      .environmentObject(userModel)
       .tint(userModel.activeTheme.colors[0])
+      .preferredColorScheme(.light)
       .onDisappear {
         // Save user preferences when app closes
         userModel.savePreferences()
