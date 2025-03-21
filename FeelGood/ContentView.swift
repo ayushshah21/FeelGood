@@ -94,7 +94,6 @@ struct OnboardingView: View {
     @EnvironmentObject private var userModel: UserModel
     @State private var currentPage = 0
     @State private var animateSelected = false
-    @State private var themePreviewOffset: CGFloat = 0
     
     var body: some View {
         ZStack {
@@ -154,7 +153,6 @@ struct OnboardingView: View {
                             .offset(y: 5)
                     }
                 }
-                .scaleEffect(animateSelected ? 1.05 : 1.0)
                 
                 // Title
                 Text("Boom - magic color change!")
@@ -168,35 +166,12 @@ struct OnboardingView: View {
                 
                 Spacer()
                 
-                // Scrollable color selection
-                VStack(spacing: 25) {
-                    // Selected theme preview
-                    ZStack {
-                        Circle()
-                            .strokeBorder(.white, lineWidth: 3)
-                            .frame(width: 80, height: 80)
-                            .scaleEffect(animateSelected ? 1.1 : 1.0)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: animateSelected)
-                            
-                        LinearGradient(
-                            gradient: Gradient(colors: userModel.activeTheme.colors),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        .clipShape(Circle())
-                        .frame(width: 74, height: 74)
-                        .shadow(color: .black.opacity(0.1), radius: 5)
-                        .scaleEffect(animateSelected ? 1.1 : 1.0)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: animateSelected)
-                    }
-                    .overlay {
-                        // Selected indicator
-                        Circle()
-                            .stroke(.white, lineWidth: animateSelected ? 3 : 0)
-                            .frame(width: 90, height: 90)
-                            .opacity(animateSelected ? 1 : 0)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: animateSelected)
-                    }
+                // Color selection section - simplified
+                VStack(spacing: 20) {
+                    Text("Select Your Theme")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     
                     // Horizontal scrolling theme selection
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -206,40 +181,48 @@ struct OnboardingView: View {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                                         userModel.selectedThemeIndex = index
                                         animateSelected = true
-                                    }
-                                    
-                                    // Haptic feedback
-                                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                                    generator.impactOccurred()
-                                    
-                                    // Reset animation after a delay
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                        animateSelected = false
+                                        
+                                        // Haptic feedback
+                                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                                        generator.impactOccurred()
+                                        
+                                        // Reset animation after a delay
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                            animateSelected = false
+                                        }
                                     }
                                 }) {
                                     ZStack {
+                                        // Outer circle
                                         Circle()
                                             .strokeBorder(.white, lineWidth: userModel.selectedThemeIndex == index ? 3 : 1)
-                                            .frame(width: 60, height: 60)
-                                            
+                                            .frame(width: 65, height: 65)
+                                        
+                                        // Theme color
                                         LinearGradient(
                                             gradient: Gradient(colors: theme.colors),
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         )
                                         .clipShape(Circle())
-                                        .frame(width: userModel.selectedThemeIndex == index ? 54 : 56, height: userModel.selectedThemeIndex == index ? 54 : 56)
+                                        .frame(width: userModel.selectedThemeIndex == index ? 59 : 61, height: userModel.selectedThemeIndex == index ? 59 : 61)
                                         .shadow(color: .black.opacity(0.1), radius: 5)
                                     }
-                                    .scaleEffect(userModel.selectedThemeIndex == index ? 1.1 : 1.0)
+                                    .scaleEffect(userModel.selectedThemeIndex == index && animateSelected ? 1.05 : 1.0)
                                     .animation(.spring(response: 0.3, dampingFraction: 0.6), value: userModel.selectedThemeIndex)
+                                    .padding(5) // Extra padding to ensure no cutoff during animation
                                 }
                             }
                         }
-                        .padding(.horizontal, 30)
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 10)
                     }
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 10)
                 }
+                .padding()
+                .background(Color.white.opacity(0.15))
+                .cornerRadius(20)
+                .padding(.horizontal)
                 
                 // Next button
                 Button(action: {
@@ -969,26 +952,7 @@ struct SettingsView: View {
                                 .fontWeight(.semibold)
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            // Selected theme preview
-                            ZStack {
-                                Circle()
-                                    .strokeBorder(.white, lineWidth: 3)
-                                    .frame(width: 80, height: 80)
-                                    .scaleEffect(animateSelected ? 1.1 : 1.0)
-                                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: animateSelected)
-                                    
-                                LinearGradient(
-                                    gradient: Gradient(colors: userModel.activeTheme.colors),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                .clipShape(Circle())
-                                .frame(width: 74, height: 74)
-                                .shadow(color: .black.opacity(0.1), radius: 5)
-                                .scaleEffect(animateSelected ? 1.1 : 1.0)
-                                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: animateSelected)
-                            }
+                                .padding(.leading, 5)
                             
                             // Horizontal scrolling theme selection
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -1013,25 +977,29 @@ struct SettingsView: View {
                                             }
                                         }) {
                                             ZStack {
+                                                // Outer circle
                                                 Circle()
                                                     .strokeBorder(.white, lineWidth: userModel.selectedThemeIndex == index ? 3 : 1)
-                                                    .frame(width: 60, height: 60)
+                                                    .frame(width: 65, height: 65)
                                                     
+                                                // Theme color
                                                 LinearGradient(
                                                     gradient: Gradient(colors: theme.colors),
                                                     startPoint: .topLeading,
                                                     endPoint: .bottomTrailing
                                                 )
                                                 .clipShape(Circle())
-                                                .frame(width: userModel.selectedThemeIndex == index ? 54 : 56, height: userModel.selectedThemeIndex == index ? 54 : 56)
+                                                .frame(width: userModel.selectedThemeIndex == index ? 59 : 61, height: userModel.selectedThemeIndex == index ? 59 : 61)
                                                 .shadow(color: .black.opacity(0.1), radius: 5)
                                             }
-                                            .scaleEffect(userModel.selectedThemeIndex == index ? 1.1 : 1.0)
+                                            .scaleEffect(userModel.selectedThemeIndex == index && animateSelected ? 1.05 : 1.0)
                                             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: userModel.selectedThemeIndex)
+                                            .padding(5) // Extra padding to ensure no cutoff during animation
                                         }
                                     }
                                 }
-                                .padding(.horizontal, 5)
+                                .padding(.horizontal, 15)
+                                .padding(.vertical, 10)
                             }
                         }
                         .padding()
@@ -1056,7 +1024,7 @@ struct SettingsView: View {
                                     .foregroundColor(.white.opacity(0.7))
                             }
                             .foregroundColor(.white)
-        .padding()
+                            .padding()
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(16)
                             .padding(.horizontal)
