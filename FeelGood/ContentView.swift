@@ -1472,41 +1472,37 @@ struct TimelineView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 15)
                 
-                // Timeline entries
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(userModel.getTimelineEntries()) { entry in
-                            TimelineEntryRow(entry: entry)
-                        }
-                    }
-                    .padding(.bottom, 80) // Add extra padding for the floating button
-                }
-                
-                // Add button (floating)
-                VStack {
-                    Spacer()
-                    
-                    HStack {
-                        Spacer()
-                        
-                        NavigationLink(destination: QuickUpdateView()) {
-                            ZStack {
-                                Circle()
-                                    .fill(.white)
-                                    .frame(width: 60, height: 60)
-                                    .shadow(color: .black.opacity(0.15), radius: 5)
-                                
-                                Image(systemName: "plus")
-                                    .font(.title2)
-                                    .foregroundColor(userModel.activeTheme.mainColor)
+                // Timeline entries with floating button
+                ZStack(alignment: .bottomTrailing) {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(userModel.getTimelineEntries()) { entry in
+                                TimelineEntryRow(entry: entry)
                             }
                         }
-                        .buttonStyle(ScaleButtonStyle()) // Add button style for better feedback
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 20)
+                        .padding(.bottom, 100) // Add padding for floating button
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    
+                    // Floating add button
+                    NavigationLink(destination: QuickUpdateView()) {
+                        ZStack {
+                            Circle()
+                                .fill(.white)
+                                .frame(width: 60, height: 60)
+                                .shadow(color: .black.opacity(0.15), radius: 5)
+                            
+                            Image(systemName: "plus")
+                                .font(.title2)
+                                .foregroundColor(userModel.activeTheme.mainColor)
+                        }
+                    }
+                    .buttonStyle(ScaleButtonStyle())
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationBarHidden(true)
     }
