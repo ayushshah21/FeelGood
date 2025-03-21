@@ -38,15 +38,8 @@ struct MainTabView: View {
             }
             
             NavigationStack {
-                Text("History View")
-                    .font(.title)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(
-                        userModel.activeTheme.mainColor
-                        .ignoresSafeArea()
-                    )
-                    .navigationTitle("History")
+                TimelineView()
+                    .navigationBarHidden(true)
             }
             .tabItem {
                 Image(systemName: "calendar")
@@ -388,17 +381,29 @@ struct HomeView: View {
                             
                             Spacer()
                             
-                            // Updates count
-                            Text("\(userModel.getTodayEntriesCount()) update today")
-                                .font(.system(size: 17))
-                                .foregroundColor(.white.opacity(0.8))
+                            // Updates count - use proper pluralization
+                            if userModel.getTimelineUpdateCount() == 1 {
+                                Text("1 update")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(15)
+                            } else {
+                                Text("\(userModel.getTimelineUpdateCount()) updates")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(15)
+                            }
                             
                             Spacer()
                             
-                            // Add button
-                            Button(action: {
-                                // Add action
-                            }) {
+                            // Add button - now linked to QuickUpdateView
+                            NavigationLink(destination: QuickUpdateView()) {
                                 HStack(spacing: 6) {
                                     Image(systemName: "plus")
                                         .font(.system(size: 14, weight: .semibold))
@@ -415,7 +420,7 @@ struct HomeView: View {
                         }
                         .padding(.horizontal)
                         
-                        // Recent check-in
+                        // Recent check-in - now linked to TimelineView
                         if let lastEntry = userModel.getLastEntry() {
                             HStack {
                                 Text(formatTime(date: lastEntry.timestamp))
@@ -428,9 +433,7 @@ struct HomeView: View {
                                 
                                 Spacer()
                                 
-                                Button(action: {
-                                    // View all action
-                                }) {
+                                NavigationLink(destination: TimelineView()) {
                                     HStack(spacing: 4) {
                                         Text("View All")
                                             .font(.system(size: 17))
@@ -502,7 +505,6 @@ struct HomeView: View {
                         }
                     }
                 }
-                .padding(.bottom, 15)
             }
             .scrollIndicators(.hidden)
             .sheet(isPresented: $showSettings) {
@@ -1031,6 +1033,585 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+// QuickUpdateView for timeline updates
+struct QuickUpdateView: View {
+    @EnvironmentObject private var userModel: UserModel
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var showMoodRating = false
+    @State private var moodRating: Double = 7
+    @State private var note: String = ""
+    @State private var isUsingVoice = true
+    @State private var animateEmoji = false
+    @State private var isDragging = false
+    
+    private let sliderWidth: CGFloat = UIScreen.main.bounds.width * 0.75
+    private let thumbWidth: CGFloat = 35
+    private let trackHeight: CGFloat = 12
+    
+    var moodText: String {
+        switch Int(moodRating) {
+        case 1...3:
+            return "Not great"
+        case 4...6:
+            return "Okay"
+        case 7...8:
+            return "Pretty good"
+        case 9...10:
+            return "Amazing!"
+        default:
+            return "Okay"
+        }
+    }
+    
+    var moodEmoji: String {
+        switch Int(moodRating) {
+        case 1...3:
+            return "😔"
+        case 4...6:
+            return "😐"
+        case 7...8:
+            return "🙂"
+        case 9...10:
+            return "😄"
+        default:
+            return "🙂"
+        }
+    }
+    
+    var moodRatingColor: Color {
+        switch Int(moodRating) {
+        case 1...3:
+            return .red.opacity(0.7)
+        case 4...6:
+            return .yellow.opacity(0.7)
+        case 7...8:
+            return .green.opacity(0.7)
+        case 9...10:
+            return Color(hex: "00FF00").opacity(0.7) // Bright green
+        default:
+            return .green.opacity(0.7)
+        }
+    }
+    
+    var body: some View {
+        ZStack {
+            // Background color
+            userModel.activeTheme.mainColor
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.title3)
+                            .foregroundColor(.white)
+                    }
+                    
+                    Spacer()
+                    
+                    Text("Quick Update")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    // Empty view for balance
+                    Image(systemName: "chevron.left")
+                        .font(.title3)
+                        .foregroundColor(.clear)
+                }
+                .padding(.horizontal)
+                .padding(.top, 10)
+                
+                // Main content
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // What's on your mind?
+                        Text("What's on your mind?")
+                            .font(.system(size: 34, weight: .bold))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 20)
+                        
+                        // Current time - ensure it fits
+                        Text(formattedTime())
+                            .font(.headline)
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(.bottom, 5)
+                            .padding(.horizontal)
+                        
+                        // Optional Mood Rating
+                        if showMoodRating {
+                            VStack(spacing: 5) {
+                                // Current Mood Section
+                                HStack {
+                                    Text("Current Mood")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                    
+                                    Spacer()
+                                    
+                                    // Close button
+                                    Button(action: {
+                                        withAnimation {
+                                            showMoodRating = false
+                                        }
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.title3)
+                                            .foregroundColor(.white.opacity(0.8))
+                                    }
+                                }
+                                .padding(.horizontal)
+                                
+                                // Emoji
+                                Text(moodEmoji)
+                                    .font(.system(size: 70))
+                                    .padding(.vertical, 5)
+                                
+                                // Mood text
+                                Text(moodText)
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                
+                                // Custom slider for mood rating
+                                ZStack(alignment: .leading) {
+                                    // Background track
+                                    Capsule()
+                                        .frame(width: sliderWidth, height: trackHeight)
+                                        .foregroundColor(.white.opacity(0.3))
+                                    
+                                    // Calculate exact positions for alignment
+                                    let maxOffset = sliderWidth - thumbWidth
+                                    let percentage = (moodRating - 1.0) / 9.0
+                                    let thumbPosition = percentage * maxOffset
+                                    let fillWidth = thumbPosition + (thumbWidth / 2)
+                                    
+                                    // Filled portion
+                                    Capsule()
+                                        .frame(width: fillWidth, height: trackHeight)
+                                        .foregroundColor(moodRatingColor)
+                                        
+                                    // Slider thumb
+                                    Circle()
+                                        .fill(.white)
+                                        .frame(width: thumbWidth, height: thumbWidth)
+                                        .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
+                                        .overlay(
+                                            Text("\(Int(moodRating))")
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundColor(userModel.activeTheme.mainColor)
+                                        )
+                                        .offset(x: thumbPosition)
+                                        .scaleEffect(isDragging ? 1.1 : 1.0)
+                                        .gesture(
+                                            DragGesture(minimumDistance: 0)
+                                                .onChanged { value in
+                                                    // Calculate position within slider bounds
+                                                    let newOffset = min(max(0, value.location.x - thumbWidth / 2), maxOffset)
+                                                    let newPercentage = newOffset / maxOffset
+                                                    let newRating = 1.0 + newPercentage * 9.0
+                                                    
+                                                    // Detect category changes
+                                                    let oldCategory = Int(moodRating) / 3
+                                                    let newCategory = Int(newRating) / 3
+                                                    
+                                                    // Update rating with minimal animation
+                                                    withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0.1)) {
+                                                        moodRating = newRating.rounded()
+                                                        isDragging = true
+                                                    }
+                                                    
+                                                    if oldCategory != newCategory {
+                                                        animateEmoji = true
+                                                        
+                                                        // Haptic feedback
+                                                        let generator = UIImpactFeedbackGenerator(style: .light)
+                                                        generator.impactOccurred()
+                                                        
+                                                        // Reset animation
+                                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                                            animateEmoji = false
+                                                        }
+                                                    }
+                                                }
+                                                .onEnded { _ in
+                                                    // End dragging state
+                                                    withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                                                        isDragging = false
+                                                    }
+                                                }
+                                        )
+                                }
+                                .frame(width: sliderWidth)
+                                .contentShape(Rectangle())
+                                .padding(.vertical, 15)
+                            }
+                            .padding(.vertical, 10)
+                        } else {
+                            // Button to add mood rating
+                            Button(action: {
+                                withAnimation {
+                                    showMoodRating = true
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "plus")
+                                        .font(.subheadline)
+                                    
+                                    Text("Add Current Mood Rating")
+                                        .font(.subheadline)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                .background(Color.white.opacity(0.2))
+                                .cornerRadius(25)
+                            }
+                            .padding(.vertical, 15)
+                        }
+                        
+                        Divider()
+                            .background(Color.white.opacity(0.3))
+                            .padding(.horizontal)
+                        
+                        // What's happening section
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("What's happening?")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding(.horizontal)
+                            
+                            // Toggle between voice and text
+                            HStack {
+                                Spacer()
+                                
+                                Button(action: {
+                                    withAnimation {
+                                        isUsingVoice.toggle()
+                                    }
+                                    
+                                    // Haptic feedback
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred()
+                                }) {
+                                    HStack(spacing: 5) {
+                                        Image(systemName: isUsingVoice ? "keyboard" : "mic.fill")
+                                            .font(.system(size: 15))
+                                        
+                                        Text(isUsingVoice ? "Use Text" : "Use Voice")
+                                            .font(.system(size: 15, weight: .medium))
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 15)
+                                    .padding(.vertical, 8)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(20)
+                                }
+                                .buttonStyle(ScaleButtonStyle())
+                            }
+                            
+                            if isUsingVoice {
+                                // Voice recording UI
+                                VStack(spacing: 15) {
+                                    // Microphone button
+                                    Button(action: {
+                                        // Handle voice recording
+                                        // (Will be implemented in future)
+                                    }) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.white.opacity(0.2))
+                                                .frame(width: 90, height: 90)
+                                            
+                                            Image(systemName: "mic.fill")
+                                                .font(.system(size: 32))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    
+                                    Text("Tap the microphone to start recording")
+                                        .font(.subheadline)
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+                                .padding(.vertical, 30)
+                                .frame(maxWidth: .infinity)
+                            } else {
+                                // Text input UI - simplified with no placeholder
+                                TextEditor(text: $note)
+                                    .foregroundColor(.white)
+                                    .scrollContentBackground(.hidden)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(15)
+                                    .frame(minHeight: 120)
+                                    .padding(.horizontal)
+                                    .padding(.vertical, 10)
+                            }
+                        }
+                        
+                        Spacer(minLength: 30)
+                        
+                        // Add to Timeline button
+                        Button(action: {
+                            // Add to timeline
+                            userModel.addQuickUpdate(
+                                rating: showMoodRating ? Int(moodRating) : nil,
+                                note: note.isEmpty ? nil : note,
+                                audioURL: nil // Will be implemented with voice recording
+                            )
+                            
+                            // Haptic feedback
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.success)
+                            
+                            // Dismiss view
+                            dismiss()
+                        }) {
+                            Text("Add to Timeline")
+                                .font(.headline)
+                                .foregroundColor(userModel.activeTheme.mainColor)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    Capsule()
+                                        .fill(.white)
+                                        .shadow(color: .black.opacity(0.1), radius: 5)
+                                )
+                                .padding(.horizontal)
+                        }
+                        .buttonStyle(ScaleButtonStyle())
+                        .padding(.bottom, 40)
+                    }
+                }
+            }
+        }
+        .navigationBarHidden(true)
+    }
+    
+    // Helper function to format current time
+    private func formattedTime() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: Date())
+    }
+}
+
+// TimelineView for displaying all entries
+struct TimelineView: View {
+    @EnvironmentObject private var userModel: UserModel
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        ZStack {
+            // Background color
+            userModel.activeTheme.mainColor
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.title3)
+                            .foregroundColor(.white)
+                    }
+                    
+                    Spacer()
+                    
+                    Text("Today's Timeline")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    // Empty space for visual balance
+                    Image(systemName: "chevron.left")
+                        .font(.title3)
+                        .foregroundColor(.clear)
+                }
+                .padding(.horizontal)
+                .padding(.top, 10)
+                
+                // Date and update count
+                HStack {
+                    Text(formattedDate())
+                        .font(.title3)
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    // Use proper pluralization for updates count
+                    if userModel.getTimelineUpdateCount() == 1 {
+                        Text("1 update")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(15)
+                    } else {
+                        Text("\(userModel.getTimelineUpdateCount()) updates")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(15)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 20)
+                .padding(.bottom, 15)
+                
+                // Timeline entries
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(userModel.getTimelineEntries()) { entry in
+                            TimelineEntryRow(entry: entry)
+                        }
+                    }
+                    .padding(.bottom, 80) // Add extra padding for the floating button
+                }
+                
+                // Add button (floating)
+                VStack {
+                    Spacer()
+                    
+                    HStack {
+                        Spacer()
+                        
+                        NavigationLink(destination: QuickUpdateView()) {
+                            ZStack {
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: 60, height: 60)
+                                    .shadow(color: .black.opacity(0.15), radius: 5)
+                                
+                                Image(systemName: "plus")
+                                    .font(.title2)
+                                    .foregroundColor(userModel.activeTheme.mainColor)
+                            }
+                        }
+                        .buttonStyle(ScaleButtonStyle()) // Add button style for better feedback
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                    }
+                }
+            }
+        }
+        .navigationBarHidden(true)
+    }
+    
+    // Helper function to format date
+    private func formattedDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM d, yyyy"
+        return formatter.string(from: Date())
+    }
+}
+
+// Timeline entry row component
+struct TimelineEntryRow: View {
+    let entry: MoodEntry
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Time stamp
+            HStack(alignment: .center) {
+                // Time
+                Text(formattedTime(date: entry.timestamp))
+                    .font(.headline)
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                // Entry type with emoji if rating exists
+                HStack(spacing: 5) {
+                    Text(entryTypeText)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    
+                    if entry.rating > 0 {
+                        Text(moodEmoji)
+                            .font(.title3)
+                    }
+                }
+                .padding(.horizontal, 15)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.2))
+                .cornerRadius(20)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            
+            // Note content (if exists)
+            if let note = entry.note, !note.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Vertical line connector
+                    HStack(alignment: .top) {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.3))
+                            .frame(width: 2)
+                            .frame(height: 25)
+                            .padding(.leading, 32)
+                        
+                        Spacer()
+                    }
+                    
+                    // Note content
+                    Text(note)
+                        .font(.body)
+                        .foregroundColor(.white.opacity(0.9))
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
+                        .padding(.leading, 42)
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 15)
+                }
+            }
+        }
+        .padding(.vertical, 5)
+        .background(Color.clear) // Ensure clear background
+    }
+    
+    // Helper computed properties
+    private var entryTypeText: String {
+        switch entry.checkInType {
+        case .morning:
+            return "Morning Check-in"
+        case .evening:
+            return "Evening Check-in"
+        case .quickUpdate:
+            return "Quick Update"
+        }
+    }
+    
+    private var moodEmoji: String {
+        switch entry.rating {
+        case 1...3: return "😔"
+        case 4...6: return "😐" 
+        case 7...8: return "🙂"
+        case 9...10: return "😄"
+        default: return ""
+        }
+    }
+    
+    // Helper function to format time
+    private func formattedTime(date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: date)
     }
 }
 

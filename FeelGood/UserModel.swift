@@ -39,6 +39,7 @@ struct MoodEntry: Identifiable, Codable {
 enum CheckInType: String, Codable {
     case morning
     case evening
+    case quickUpdate
 }
 
 // Main user model for preferences and data
@@ -190,6 +191,45 @@ class UserModel: ObservableObject {
             let entryDay = calendar.startOfDay(for: entry.timestamp)
             return calendar.isDate(entryDay, inSameDayAs: today)
         }.sorted { $0.timestamp > $1.timestamp }
+    }
+    
+    // Add a quick update to the timeline
+    func addQuickUpdate(rating: Int? = nil, note: String? = nil, audioURL: String? = nil) {
+        // Create new entry with optional rating
+        let newEntry = MoodEntry(
+            rating: rating ?? 0, // Use 0 to indicate no rating provided
+            note: note,
+            audioURL: audioURL,
+            timestamp: Date(),
+            checkInType: .quickUpdate
+        )
+        
+        // Add to local array
+        moodEntries.append(newEntry)
+        
+        // Save changes
+        savePreferences()
+    }
+    
+    // Get timeline entries for today
+    func getTimelineEntries() -> [MoodEntry] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        // Get all entries from today
+        let todayEntries = moodEntries.filter { entry in
+            let entryDay = calendar.startOfDay(for: entry.timestamp)
+            return calendar.isDate(entryDay, inSameDayAs: today)
+        }
+        
+        // Sort by timestamp in descending order (newest first)
+        return todayEntries.sorted { $0.timestamp > $1.timestamp }
+    }
+    
+    // Get update count for the timeline
+    func getTimelineUpdateCount() -> Int {
+        // This returns the actual count of all meaningful entries
+        return getTimelineEntries().count
     }
     
     // Get average mood for a specific time period
