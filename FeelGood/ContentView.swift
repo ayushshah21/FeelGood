@@ -221,9 +221,13 @@ struct CheckInView: View {
     @State private var note: String = ""
     @State private var isAddingNote = false
     @State private var animateEmoji = false
-    
-    // Keep track of previous rating to animate changes
+    @State private var isDragging = false // Track dragging state
     @State private var previousRating: Double = 7
+    
+    // Define slider dimensions as constants at the struct level
+    private let sliderWidth: CGFloat = UIScreen.main.bounds.width * 0.75
+    private let thumbWidth: CGFloat = 35
+    private let trackHeight: CGFloat = 12
     
     var moodText: String {
         switch Int(moodRating) {
@@ -284,14 +288,11 @@ struct CheckInView: View {
                 VStack(spacing: 15) {
                     // Header
                     HStack {
-                        // Empty instead of back button to center title
                         Spacer()
-                        
                         Text("Morning Check-in")
                             .font(.title3)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
-                        
                         Spacer()
                     }
                     .padding(.horizontal)
@@ -304,7 +305,6 @@ struct CheckInView: View {
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
                         
-                        // Current date
                         Text(formattedDate())
                             .font(.subheadline)
                             .foregroundColor(.white.opacity(0.8))
@@ -327,155 +327,176 @@ struct CheckInView: View {
                     
                     // Improved slider for mood rating
                     VStack(spacing: 5) {
-                        // Custom slider track
+                        // Custom slider track with thumb
                         ZStack(alignment: .leading) {
                             // Background track
                             Capsule()
-                                .frame(height: 12)
+                                .frame(width: sliderWidth, height: trackHeight)
                                 .foregroundColor(.white.opacity(0.3))
                             
-                            // Filled portion
-                            let fillWidth = max(0, CGFloat((moodRating - 1) / 9) * UIScreen.main.bounds.width * 0.75)
+                            // Calculate exact positions for perfect alignment
+                            let percentage = (moodRating - 1.0) / 9.0
+                            let thumbPosition = percentage * (sliderWidth - thumbWidth)
+                            let fillWidth = thumbPosition + (thumbWidth / 2)
+                            
+                            // Filled portion - aligned exactly with thumb center
                             Capsule()
-                                .frame(width: fillWidth, height: 12)
+                                .frame(width: fillWidth, height: trackHeight)
                                 .foregroundColor(moodRatingColor)
                                 
                             // Slider thumb directly on the track
                             Circle()
                                 .fill(.white)
-                                .frame(width: 35, height: 35)
+                                .frame(width: thumbWidth, height: thumbWidth)
                                 .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
                                 .overlay(
                                     Text("\(Int(moodRating))")
                                         .font(.system(size: 16, weight: .semibold))
                                         .foregroundColor(userModel.activeTheme.colors[0])
                                 )
-                                .offset(x: fillWidth - 17.5) // Center the circle on the progress point
+                                .offset(x: thumbPosition)
+                                .scaleEffect(isDragging ? 1.1 : 1.0)
                         }
-                        .frame(width: UIScreen.main.bounds.width * 0.75)
-                        
-                        // Slider interaction overlay
-                        Color.clear
-                            .frame(width: UIScreen.main.bounds.width * 0.75, height: 44)
-                            .contentShape(Rectangle())
-                            .gesture(
-                                DragGesture(minimumDistance: 0)
-                                    .onChanged { value in
-                                        let width = UIScreen.main.bounds.width * 0.75
-                                        let xPos = min(max(0, value.location.x), width)
-                                        let percentage = Double(xPos / width)
-                                        let newRating = 1.0 + percentage * 9.0
-                                        
-                                        // Only trigger animation if the rating category changes
-                                        let oldCategory = Int(moodRating) / 3
-                                        let newCategory = Int(newRating) / 3
-                                        
-                                        if oldCategory != newCategory {
-                                            animateEmoji = true
-                                            
-                                            // Add haptic feedback
-                                            let generator = UIImpactFeedbackGenerator(style: .light)
-                                            generator.impactOccurred()
-                                            
-                                            // Reset animation
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                                animateEmoji = false
-                                            }
-                                        }
-                                        
+                        .frame(width: sliderWidth)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    // Calculate position within the slider
+                                    let xPos = min(max(0, value.location.x), sliderWidth)
+                                    let percentage = Double(xPos / sliderWidth)
+                                    let newRating = 1.0 + percentage * 9.0
+                                    
+                                    // Detect category changes
+                                    let oldCategory = Int(moodRating) / 3
+                                    let newCategory = Int(newRating) / 3
+                                    
+                                    // Update rating with minimal animation for smooth dragging
+                                    withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0.1)) {
                                         moodRating = newRating.rounded()
+                                        isDragging = true
                                     }
-                            )
+                                    
+                                    if oldCategory != newCategory {
+                                        animateEmoji = true
+                                        
+                                        // Add haptic feedback
+                                        let generator = UIImpactFeedbackGenerator(style: .light)
+                                        generator.impactOccurred()
+                                        
+                                        // Reset animation
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                            animateEmoji = false
+                                        }
+                                    }
+                                }
+                                .onEnded { _ in
+                                    // End dragging state when gesture ends
+                                    withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                                        isDragging = false
+                                    }
+                                }
+                        )
                     }
+                    .padding(.bottom, 5) // Add a little padding before next section
                     
-                    Spacer()
-                        .frame(height: 30)
-                    
-                    Text("Tell me about it")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                    
-                    // Note input section with more compact layout
-                    VStack(spacing: 8) {
-                        // Microphone button
-                        Button(action: {
-                            isRecording.toggle()
-                            
-                            // Haptic feedback
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred()
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white.opacity(0.2))
-                                    .frame(width: 70, height: 70)
-                                    .shadow(color: .black.opacity(0.1), radius: 5)
-                                
-                                Image(systemName: isRecording ? "stop.fill" : "mic.fill")
-                                    .font(.title)
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .buttonStyle(ScaleButtonStyle())
+                    // Tell me about it section
+                    HStack {
+                        Text("Tell me about it")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
                         
-                        Text(isRecording ? "Recording... Tap to stop" : "Tap the microphone to start recording")
-                            .font(.caption)
+                        Image(systemName: "chevron.down")
+                            .font(.subheadline)
                             .foregroundColor(.white.opacity(0.8))
                         
-                        // Text note button
+                        Spacer()
+                        
                         Button(action: {
-                            isAddingNote.toggle()
-                            
-                            // Haptic feedback
+                            isRecording.toggle()
                             let generator = UIImpactFeedbackGenerator(style: .light)
                             generator.impactOccurred()
                         }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "text.bubble.fill")
-                                    .font(.body)
-                                
-                                Text("Add text note")
-                                    .font(.headline)
+                            HStack(spacing: 4) {
+                                Image(systemName: isRecording ? "mic.fill" : "keyboard")
+                                    .font(.subheadline)
+                                Text(isRecording ? "Use Voice" : "Use Text")
+                                    .font(.subheadline)
                             }
                             .foregroundColor(.white)
-                            .padding(.horizontal, 25)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
                             .background(Color.white.opacity(0.2))
-                            .cornerRadius(30)
+                            .cornerRadius(15)
                         }
-                        .buttonStyle(ScaleButtonStyle())
-                        .padding(.vertical, 5)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 4)
+                    
+                    if isRecording {
+                        TextField("", text: $note)
+                            .font(.body)
+                            .foregroundColor(.white)
+        .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(15)
+                            .padding(.horizontal)
+                    } else {
+                        VStack(spacing: 8) {
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                                    generator.impactOccurred()
+                                }
+                            }) {
+                                Circle()
+                                    .fill(Color.white.opacity(0.2))
+                                    .frame(width: 70, height: 70)
+                                    .overlay(
+                                        Image(systemName: "mic.fill")
+                                            .font(.title2)
+                                            .foregroundColor(.white)
+                                    )
+                            }
+                            .buttonStyle(ScaleButtonStyle())
+                            
+                            Text("Tap to start recording")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .padding(.top, 5)
                     }
                     
-                    // Submit button - ensuring it's visible
+                    Spacer()
+                    
+                    // Save button
                     Button(action: {
-                        // Haptic feedback
                         let generator = UINotificationFeedbackGenerator()
                         generator.notificationOccurred(.success)
                         
-                        // Save mood entry
                         userModel.addMoodEntry(
                             rating: Int(moodRating),
                             note: note.isEmpty ? nil : note,
-                            audioURL: nil, // We'd implement audio recording functionality later
+                            audioURL: nil,
                             checkInType: .morning
                         )
                         
-                        // Reset inputs
                         moodRating = 7
                         note = ""
-                        isAddingNote = false
+                        isRecording = false
                     }) {
-                        Text("SUBMIT")
-                            .fontWeight(.semibold)
+                        Text("Save How I Feel")
+                            .font(.body.weight(.medium))
                             .foregroundColor(userModel.activeTheme.colors[0])
-                            .frame(width: 280, height: 50)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
                             .background(
                                 Capsule()
                                     .fill(.white)
                                     .shadow(color: .black.opacity(0.1), radius: 5)
                             )
+                            .padding(.horizontal)
                     }
                     .buttonStyle(ScaleButtonStyle())
                     .padding(.vertical, 15)
@@ -483,54 +504,6 @@ struct CheckInView: View {
                 .padding(.vertical, 10)
             }
             .scrollIndicators(.hidden)
-            
-            // Text note sheet
-            if isAddingNote {
-                Color.black.opacity(0.3)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        isAddingNote = false
-                    }
-                
-                VStack {
-                    Text("Add a note")
-                        .font(.headline)
-                        .foregroundColor(userModel.activeTheme.colors[0])
-                        .padding(.top)
-                    
-                    TextEditor(text: $note)
-                        .padding()
-                        .frame(height: 150)
-                        .background(Color.white.opacity(0.9))
-                        .cornerRadius(10)
-                    
-                    HStack {
-                        Button("Cancel") {
-                            isAddingNote = false
-                        }
-                        .foregroundColor(.red)
-                        
-                        Spacer()
-                        
-                        Button("Save") {
-                            isAddingNote = false
-                            
-                            // Haptic feedback
-                            let generator = UINotificationFeedbackGenerator()
-                            generator.notificationOccurred(.success)
-                        }
-                        .foregroundColor(userModel.activeTheme.colors[0])
-                    }
-                    .padding()
-                }
-                .padding()
-                .background(Color.white)
-                .cornerRadius(15)
-                .shadow(radius: 10)
-                .padding(.horizontal, 20)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isAddingNote)
-            }
         }
     }
     
