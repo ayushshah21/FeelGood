@@ -43,11 +43,7 @@ struct MainTabView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: userModel.activeTheme.colors),
-                            startPoint: userModel.activeTheme.startPoint,
-                            endPoint: userModel.activeTheme.endPoint
-                        )
+                        userModel.activeTheme.mainColor
                         .ignoresSafeArea()
                     )
                     .navigationTitle("History")
@@ -63,11 +59,7 @@ struct MainTabView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: userModel.activeTheme.colors),
-                            startPoint: userModel.activeTheme.startPoint,
-                            endPoint: userModel.activeTheme.endPoint
-                        )
+                        userModel.activeTheme.mainColor
                         .ignoresSafeArea()
                     )
                     .navigationTitle("Insights")
@@ -97,12 +89,8 @@ struct OnboardingView: View {
     
     var body: some View {
         ZStack {
-            // Background gradient based on selected theme
-            LinearGradient(
-                gradient: Gradient(colors: userModel.activeTheme.colors),
-                startPoint: userModel.activeTheme.startPoint,
-                endPoint: userModel.activeTheme.endPoint
-            )
+            // Solid color background
+            userModel.activeTheme.mainColor
             .ignoresSafeArea()
             
             VStack(spacing: 30) {
@@ -198,15 +186,11 @@ struct OnboardingView: View {
                                             .strokeBorder(.white, lineWidth: userModel.selectedThemeIndex == index ? 3 : 1)
                                             .frame(width: 65, height: 65)
                                         
-                                        // Theme color
-                                        LinearGradient(
-                                            gradient: Gradient(colors: theme.colors),
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                        .clipShape(Circle())
-                                        .frame(width: userModel.selectedThemeIndex == index ? 59 : 61, height: userModel.selectedThemeIndex == index ? 59 : 61)
-                                        .shadow(color: .black.opacity(0.1), radius: 5)
+                                        // Theme color - now using solid color
+                                        Circle()
+                                            .fill(theme.mainColor)
+                                            .frame(width: userModel.selectedThemeIndex == index ? 59 : 61, height: userModel.selectedThemeIndex == index ? 59 : 61)
+                                            .shadow(color: .black.opacity(0.1), radius: 5)
                                     }
                                     .scaleEffect(userModel.selectedThemeIndex == index && animateSelected ? 1.05 : 1.0)
                                     .animation(.spring(response: 0.3, dampingFraction: 0.6), value: userModel.selectedThemeIndex)
@@ -241,7 +225,7 @@ struct OnboardingView: View {
                 }) {
                     Text("NEXT")
                         .fontWeight(.semibold)
-                        .foregroundColor(userModel.activeTheme.colors[0])
+                        .foregroundColor(userModel.activeTheme.mainColor)
                         .frame(width: 280, height: 60)
                         .background(
                             Capsule()
@@ -275,12 +259,8 @@ struct HomeView: View {
     
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: userModel.activeTheme.colors),
-                startPoint: userModel.activeTheme.startPoint,
-                endPoint: userModel.activeTheme.endPoint
-            )
+            // Solid color background
+            userModel.activeTheme.mainColor
             .ignoresSafeArea()
             
             ScrollView {
@@ -426,7 +406,7 @@ struct HomeView: View {
                                     Text("Add")
                                         .font(.system(size: 17, weight: .medium))
                                 }
-                                .foregroundColor(userModel.activeTheme.colors[0])
+                                .foregroundColor(userModel.activeTheme.mainColor)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
                                 .background(Color.white)
@@ -647,12 +627,8 @@ struct CheckInView: View {
     
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: userModel.activeTheme.colors),
-                startPoint: userModel.activeTheme.startPoint,
-                endPoint: userModel.activeTheme.endPoint
-            )
+            // Solid color background
+            userModel.activeTheme.mainColor
             .ignoresSafeArea()
             
             ScrollView {
@@ -712,7 +688,7 @@ struct CheckInView: View {
                                 .overlay(
                                     Text("\(Int(moodRating))")
                                         .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(userModel.activeTheme.colors[0])
+                                        .foregroundColor(userModel.activeTheme.mainColor)
                                 )
                                 .offset(x: thumbPosition)
                                 .scaleEffect(isDragging ? 1.1 : 1.0)
@@ -872,7 +848,7 @@ struct CheckInView: View {
                     }) {
                         Text("Save How I Feel")
                             .font(.body.weight(.medium))
-                            .foregroundColor(userModel.activeTheme.colors[0])
+                            .foregroundColor(userModel.activeTheme.mainColor)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(
@@ -935,12 +911,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    gradient: Gradient(colors: userModel.activeTheme.colors),
-                    startPoint: userModel.activeTheme.startPoint,
-                    endPoint: userModel.activeTheme.endPoint
-                )
+                // Solid color background
+                userModel.activeTheme.mainColor
                 .ignoresSafeArea()
                 
                 ScrollView {
@@ -982,15 +954,11 @@ struct SettingsView: View {
                                                     .strokeBorder(.white, lineWidth: userModel.selectedThemeIndex == index ? 3 : 1)
                                                     .frame(width: 65, height: 65)
                                                     
-                                                // Theme color
-                                                LinearGradient(
-                                                    gradient: Gradient(colors: theme.colors),
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                )
-                                                .clipShape(Circle())
-                                                .frame(width: userModel.selectedThemeIndex == index ? 59 : 61, height: userModel.selectedThemeIndex == index ? 59 : 61)
-                                                .shadow(color: .black.opacity(0.1), radius: 5)
+                                                // Theme color - now using solid color
+                                                Circle()
+                                                    .fill(theme.mainColor)
+                                                    .frame(width: userModel.selectedThemeIndex == index ? 59 : 61, height: userModel.selectedThemeIndex == index ? 59 : 61)
+                                                    .shadow(color: .black.opacity(0.1), radius: 5)
                                             }
                                             .scaleEffect(userModel.selectedThemeIndex == index && animateSelected ? 1.05 : 1.0)
                                             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: userModel.selectedThemeIndex)
@@ -1024,7 +992,7 @@ struct SettingsView: View {
                                     .foregroundColor(.white.opacity(0.7))
                             }
                             .foregroundColor(.white)
-                            .padding()
+        .padding()
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(16)
                             .padding(.horizontal)

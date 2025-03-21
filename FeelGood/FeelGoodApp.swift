@@ -18,7 +18,7 @@ struct FeelGoodApp: App {
         ContentView()
       }
       .environmentObject(userModel)
-      .tint(userModel.activeTheme.colors[0])
+      .tint(userModel.activeTheme.mainColor)
       .preferredColorScheme(.light)
       .onDisappear {
         // Save user preferences when app closes

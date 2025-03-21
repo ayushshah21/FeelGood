@@ -15,6 +15,11 @@ struct ThemeGradient: Identifiable, Equatable {
     var startPoint: UnitPoint = .top
     var endPoint: UnitPoint = .bottom
     
+    // Helper computed property to access main color
+    var mainColor: Color {
+        return colors[0]
+    }
+    
     static func == (lhs: ThemeGradient, rhs: ThemeGradient) -> Bool {
         return lhs.name == rhs.name
     }
@@ -42,19 +47,37 @@ class UserModel: ObservableObject {
     @Published var selectedThemeIndex: Int = 0
     @Published var moodEntries: [MoodEntry] = []
     
-    // Theme gradient options
+    // Theme options with carefully selected soothing colors
     let themeGradients: [ThemeGradient] = [
-        // Add the image's purple gradient as the first option (default)
-        ThemeGradient(name: "vybeCheck", colors: [Color(hex: "6053E8"), Color(hex: "7E78FF")]),
-        ThemeGradient(name: "lavender", colors: [Color(hex: "8B7FF0"), Color(hex: "7E6EF4")]),
-        ThemeGradient(name: "sunset", colors: [Color(hex: "FF9190"), Color(hex: "FFC389")]),
-        ThemeGradient(name: "ocean", colors: [Color(hex: "00B4DB"), Color(hex: "0083B0")]),
-        ThemeGradient(name: "mint", colors: [Color(hex: "A1DEA8"), Color(hex: "57C478")]),
-        ThemeGradient(name: "rose", colors: [Color(hex: "FF5E7E"), Color(hex: "FF99AC")]),
-        ThemeGradient(name: "midnight", colors: [Color(hex: "232526"), Color(hex: "414345")]),
-        ThemeGradient(name: "sunshine", colors: [Color(hex: "FFDE59"), Color(hex: "FFB830")]),
-        ThemeGradient(name: "purple", colors: [Color(hex: "A742EB"), Color(hex: "7F45E8")]),
-        ThemeGradient(name: "tranquil", colors: [Color(hex: "74EBD5"), Color(hex: "9FACE6")]),
+        // Calming Purple - promotes creativity and peace
+        ThemeGradient(name: "calmPurple", colors: [Color(hex: "7E5BE3")]),
+        
+        // Serene Blue - promotes relaxation and tranquility
+        ThemeGradient(name: "sereneBlue", colors: [Color(hex: "4A90E2")]),
+        
+        // Soothing Green - promotes balance and harmony
+        ThemeGradient(name: "soothingGreen", colors: [Color(hex: "66BB6A")]),
+        
+        // Warm Peach - promotes comfort and safety
+        ThemeGradient(name: "warmPeach", colors: [Color(hex: "FFAB91")]),
+        
+        // Gentle Lavender - promotes calmness and serenity
+        ThemeGradient(name: "gentleLavender", colors: [Color(hex: "9575CD")]),
+        
+        // Soft Teal - promotes mental clarity and stability
+        ThemeGradient(name: "softTeal", colors: [Color(hex: "4DB6AC")]),
+        
+        // Tranquil Rose - promotes love and compassion
+        ThemeGradient(name: "tranquilRose", colors: [Color(hex: "F06292")]),
+        
+        // Comfort Orange - promotes enthusiasm and energy
+        ThemeGradient(name: "comfortOrange", colors: [Color(hex: "FF9800")]),
+        
+        // Mindful Indigo - promotes intuition and deep thought
+        ThemeGradient(name: "mindfulIndigo", colors: [Color(hex: "5C6BC0")]),
+        
+        // Blissful Mint - promotes freshness and clarity
+        ThemeGradient(name: "blissfulMint", colors: [Color(hex: "4DD0E1")]),
     ]
     
     // Active theme gradient
