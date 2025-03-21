@@ -631,257 +631,271 @@ struct CheckInView: View {
         ZStack {
             // Solid color background
             userModel.activeTheme.mainColor
-            .ignoresSafeArea()
+                .ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 12) {
-                    // Main content section
-                    VStack(spacing: 6) {
-                        Text("How are you feeling?")
-                            .font(.system(size: 30, weight: .semibold))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                        
-                        Text(formattedDate())
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                    .padding(.top, 5)
-                    
-                    // Emoji with animation
-                    Text(moodEmoji)
-                        .font(.system(size: 80))
-                        .padding(.vertical, 8)
-                        .scaleEffect(animateEmoji ? 1.2 : 1.0)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: animateEmoji)
-                    
-                    // Mood text
-                    Text(moodText)
-                        .font(.title3)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                        .padding(.bottom, 5)
-                    
-                    // Improved slider for mood rating
-                    VStack(spacing: 5) {
-                        // Custom slider track with thumb
-                        ZStack(alignment: .leading) {
-                            // Background track
-                            Capsule()
-                                .frame(width: sliderWidth, height: trackHeight)
-                                .foregroundColor(.white.opacity(0.3))
-                            
-                            // Calculate exact positions for perfect alignment
-                            let maxOffset = sliderWidth - thumbWidth
-                            let percentage = (moodRating - 1.0) / 9.0
-                            let thumbPosition = percentage * maxOffset
-                            let fillWidth = thumbPosition + (thumbWidth / 2)
-                            
-                            // Filled portion - aligned exactly with thumb center
-                            Capsule()
-                                .frame(width: fillWidth, height: trackHeight)
-                                .foregroundColor(moodRatingColor)
-                                
-                            // Slider thumb directly on the track
-                            Circle()
-                                .fill(.white)
-                                .frame(width: thumbWidth, height: thumbWidth)
-                                .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
-                                .overlay(
-                                    Text("\(Int(moodRating))")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(userModel.activeTheme.mainColor)
-                                )
-                                .offset(x: thumbPosition)
-                                .scaleEffect(isDragging ? 1.1 : 1.0)
-                                .gesture(
-                                    DragGesture(minimumDistance: 0)
-                                        .onChanged { value in
-                                            // Calculate position within the slider bounds
-                                            let newOffset = min(max(0, value.location.x - thumbWidth / 2), maxOffset)
-                                            let newPercentage = newOffset / maxOffset
-                                            let newRating = 1.0 + newPercentage * 9.0
-                                            
-                                            // Detect category changes
-                                            let oldCategory = Int(moodRating) / 3
-                                            let newCategory = Int(newRating) / 3
-                                            
-                                            // Update rating with minimal animation for smooth dragging
-                                            withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0.1)) {
-                                                moodRating = newRating.rounded()
-                                                isDragging = true
-                                            }
-                                            
-                                            if oldCategory != newCategory {
-                                                animateEmoji = true
-                                                
-                                                // Add haptic feedback
-                                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                                generator.impactOccurred()
-                                                
-                                                // Reset animation
-                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                                    animateEmoji = false
-                                                }
-                                            }
-                                        }
-                                        .onEnded { _ in
-                                            // End dragging state when gesture ends
-                                            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-                                                isDragging = false
-                                            }
-                                        }
-                                )
-                        }
-                        .frame(width: sliderWidth)
-                        .contentShape(Rectangle())
-                        .onTapGesture { location in
-                            let newOffset = min(max(0, location.x - thumbWidth / 2), sliderWidth - thumbWidth)
-                            let newPercentage = newOffset / (sliderWidth - thumbWidth)
-                            let newRating = 1.0 + newPercentage * 9.0
-                            
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                moodRating = newRating.rounded()
-                            }
-                            
-                            // Haptic feedback
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
-                            
-                            // Animate emoji if category changes
-                            let oldCategory = Int(moodRating) / 3
-                            let newCategory = Int(newRating) / 3
-                            if oldCategory != newCategory {
-                                animateEmoji = true
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    animateEmoji = false
-                                }
-                            }
-                        }
-                    }
-                    .padding(.bottom, 15)
-                    
-                    // Tell me about it section
-                    VStack(spacing: 10) {
-                        HStack {
-                            Text("Tell me about it")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.white)
-                            
-                            Image(systemName: "chevron.down")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                            
-                            Spacer()
-                            
-                            Button(action: {
-                                isRecording.toggle()
-                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                generator.impactOccurred()
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: isRecording ? "mic.fill" : "keyboard")
-                                        .font(.subheadline)
-                                    Text(isRecording ? "Use Voice" : "Use Text")
-                                        .font(.subheadline)
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(15)
-                            }
-                        }
-                        .padding(.horizontal)
-                        
-                        if isRecording {
-                            TextField("", text: $note)
-                                .font(.body)
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(15)
-                                .padding(.horizontal)
-                        } else {
-                            VStack(spacing: 6) {
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                                        generator.impactOccurred()
-                                    }
-                                }) {
-                                    Circle()
-                                        .fill(Color.white.opacity(0.2))
-                                        .frame(width: 70, height: 70)
-                                        .overlay(
-                                            Image(systemName: "mic.fill")
-                                                .font(.title2)
-                                                .foregroundColor(.white)
-                                        )
-                                }
-                                .buttonStyle(ScaleButtonStyle())
-                                
-                                Text("Tap to start recording")
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.8))
-                            }
-                            .padding(.top, 5)
-                        }
-                    }
-                    
-                    Spacer(minLength: 30)
-                    
-                    // Save button
+            VStack(spacing: 0) {
+                // Custom header
+                HStack {
                     Button(action: {
-                        // Haptic feedback
-                        let generator = UINotificationFeedbackGenerator()
-                        generator.notificationOccurred(.success)
-                        
-                        // Save mood entry
-                        userModel.addMoodEntry(
-                            rating: Int(moodRating),
-                            note: note.isEmpty ? nil : note,
-                            audioURL: nil,
-                            checkInType: checkInType
-                        )
-                        
-                        // Navigate back
                         dismiss()
                     }) {
-                        Text("Save How I Feel")
-                            .font(.body.weight(.medium))
-                            .foregroundColor(userModel.activeTheme.mainColor)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(
-                                Capsule()
-                                    .fill(.white)
-                                    .shadow(color: .black.opacity(0.1), radius: 5)
-                            )
-                            .padding(.horizontal)
+                        Image(systemName: "chevron.left")
+                            .font(.title3)
+                            .foregroundColor(.white)
                     }
-                    .buttonStyle(ScaleButtonStyle())
-                    .padding(.vertical, 15)
-                }
-                .padding(.vertical, 10)
-            }
-            .scrollIndicators(.hidden)
-        }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
+                    
+                    Spacer()
+                    
+                    Text("\(checkInType == .morning ? "Morning" : "Evening") Check-in")
                         .font(.headline)
                         .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    // Empty view for balance
+                    Image(systemName: "chevron.left")
+                        .font(.title3)
+                        .foregroundColor(.clear)
                 }
-            }
-            ToolbarItem(placement: .principal) {
-                Text("\(checkInType == .morning ? "Morning" : "Evening") Check-in")
-                    .font(.headline)
-                    .foregroundColor(.white)
+                .padding(.horizontal)
+                .padding(.top, 10)
+                
+                ScrollView {
+                    VStack(spacing: 12) {
+                        // Main content section
+                        VStack(spacing: 6) {
+                            Text("How are you feeling?")
+                                .font(.system(size: 30, weight: .semibold))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.center)
+                            
+                            Text(formattedDate())
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .padding(.top, 20)
+                        
+                        // Emoji with animation
+                        Text(moodEmoji)
+                            .font(.system(size: 80))
+                            .padding(.vertical, 8)
+                            .scaleEffect(animateEmoji ? 1.2 : 1.0)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: animateEmoji)
+                        
+                        // Mood text
+                        Text(moodText)
+                            .font(.title3)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .padding(.bottom, 5)
+                        
+                        // Improved slider for mood rating
+                        VStack(spacing: 5) {
+                            // Custom slider track with thumb
+                            ZStack(alignment: .leading) {
+                                // Background track
+                                Capsule()
+                                    .frame(width: sliderWidth, height: trackHeight)
+                                    .foregroundColor(.white.opacity(0.3))
+                                
+                                // Calculate exact positions for perfect alignment
+                                let maxOffset = sliderWidth - thumbWidth
+                                let percentage = (moodRating - 1.0) / 9.0
+                                let thumbPosition = percentage * maxOffset
+                                let fillWidth = thumbPosition + (thumbWidth / 2)
+                                
+                                // Filled portion - aligned exactly with thumb center
+                                Capsule()
+                                    .frame(width: fillWidth, height: trackHeight)
+                                    .foregroundColor(moodRatingColor)
+                                    
+                                // Slider thumb directly on the track
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: thumbWidth, height: thumbWidth)
+                                    .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
+                                    .overlay(
+                                        Text("\(Int(moodRating))")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(userModel.activeTheme.mainColor)
+                                    )
+                                    .offset(x: thumbPosition)
+                                    .scaleEffect(isDragging ? 1.1 : 1.0)
+                                    .gesture(
+                                        DragGesture(minimumDistance: 0)
+                                            .onChanged { value in
+                                                // Calculate position within the slider bounds
+                                                let newOffset = min(max(0, value.location.x - thumbWidth / 2), maxOffset)
+                                                let newPercentage = newOffset / maxOffset
+                                                let newRating = 1.0 + newPercentage * 9.0
+                                                
+                                                // Detect category changes
+                                                let oldCategory = Int(moodRating) / 3
+                                                let newCategory = Int(newRating) / 3
+                                                
+                                                // Update rating with minimal animation for smooth dragging
+                                                withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0.1)) {
+                                                    moodRating = newRating.rounded()
+                                                    isDragging = true
+                                                }
+                                                
+                                                if oldCategory != newCategory {
+                                                    animateEmoji = true
+                                                    
+                                                    // Add haptic feedback
+                                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                                    generator.impactOccurred()
+                                                    
+                                                    // Reset animation
+                                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                                        animateEmoji = false
+                                                    }
+                                                }
+                                            }
+                                            .onEnded { _ in
+                                                // End dragging state when gesture ends
+                                                withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                                                    isDragging = false
+                                                }
+                                            }
+                                    )
+                            }
+                            .frame(width: sliderWidth)
+                            .contentShape(Rectangle())
+                            .onTapGesture { location in
+                                let newOffset = min(max(0, location.x - thumbWidth / 2), sliderWidth - thumbWidth)
+                                let newPercentage = newOffset / (sliderWidth - thumbWidth)
+                                let newRating = 1.0 + newPercentage * 9.0
+                                
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    moodRating = newRating.rounded()
+                                }
+                                
+                                // Haptic feedback
+                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                generator.impactOccurred()
+                                
+                                // Animate emoji if category changes
+                                let oldCategory = Int(moodRating) / 3
+                                let newCategory = Int(newRating) / 3
+                                if oldCategory != newCategory {
+                                    animateEmoji = true
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        animateEmoji = false
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.bottom, 15)
+                        
+                        // Tell me about it section
+                        VStack(spacing: 10) {
+                            HStack {
+                                Text("Tell me about it")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.white)
+                                
+                                Image(systemName: "chevron.down")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.8))
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    isRecording.toggle()
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred()
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: isRecording ? "mic.fill" : "keyboard")
+                                            .font(.subheadline)
+                                        Text(isRecording ? "Use Voice" : "Use Text")
+                                            .font(.subheadline)
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(15)
+                                }
+                            }
+                            .padding(.horizontal)
+                            
+                            if isRecording {
+                                TextField("", text: $note)
+                                    .font(.body)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(15)
+                                    .padding(.horizontal)
+                            } else {
+                                VStack(spacing: 6) {
+                                    Button(action: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                                            generator.impactOccurred()
+                                        }
+                                    }) {
+                                        Circle()
+                                            .fill(Color.white.opacity(0.2))
+                                            .frame(width: 70, height: 70)
+                                            .overlay(
+                                                Image(systemName: "mic.fill")
+                                                    .font(.title2)
+                                                    .foregroundColor(.white)
+                                            )
+                                    }
+                                    .buttonStyle(ScaleButtonStyle())
+                                    
+                                    Text("Tap to start recording")
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+                                .padding(.top, 5)
+                            }
+                        }
+                        
+                        Spacer(minLength: 30)
+                        
+                        // Save button
+                        Button(action: {
+                            // Haptic feedback
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.success)
+                            
+                            // Save mood entry
+                            userModel.addMoodEntry(
+                                rating: Int(moodRating),
+                                note: note.isEmpty ? nil : note,
+                                audioURL: nil,
+                                checkInType: checkInType
+                            )
+                            
+                            // Navigate back
+                            dismiss()
+                        }) {
+                            Text("Save How I Feel")
+                                .font(.body.weight(.medium))
+                                .foregroundColor(userModel.activeTheme.mainColor)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(
+                                    Capsule()
+                                        .fill(.white)
+                                        .shadow(color: .black.opacity(0.1), radius: 5)
+                                )
+                                .padding(.horizontal)
+                        }
+                        .buttonStyle(ScaleButtonStyle())
+                        .padding(.vertical, 15)
+                    }
+                    .padding(.vertical, 10)
+                }
+                .scrollIndicators(.hidden)
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
         .onAppear {
             loadExistingData()
         }
