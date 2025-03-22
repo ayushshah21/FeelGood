@@ -72,7 +72,7 @@ Dependencies/
 
 # fastlane
 #
-# It is recommended to not store the screenshots in the git repo.
+# It is recommended to not store the screenshots in the git repository.
 # Instead, use fastlane to re-generate the screenshots whenever they are needed.
 # For more information about the recommended setup visit:
 # https://docs.fastlane.tools/best-practices/source-control/#source-control
@@ -89,7 +89,8 @@ fastlane/test_output
 
 iOSInjectionProject/
 
-# API Configuration - protect sensitive keys
+# API keys and sensitive configuration
+**/GoogleService-Info.plist
 APIConfig.swift
 
 # macOS system files

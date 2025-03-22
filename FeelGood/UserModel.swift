@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
+import FirebaseAuth
 
 // Theme gradient structure
 struct ThemeGradient: Identifiable, Equatable {
@@ -27,7 +29,7 @@ struct ThemeGradient: Identifiable, Equatable {
 
 // Structure for mood entries
 struct MoodEntry: Identifiable, Codable {
-    var id = UUID()
+    var id: UUID
     var date: Date
     var rating: Int
     var note: String?
@@ -35,7 +37,8 @@ struct MoodEntry: Identifiable, Codable {
     var checkInType: CheckInType
     var transcription: String?
     
-    init(date: Date = Date(), rating: Int, note: String? = nil, audioURL: URL? = nil, checkInType: CheckInType, transcription: String? = nil) {
+    init(id: UUID = UUID(), date: Date = Date(), rating: Int, note: String? = nil, audioURL: URL? = nil, checkInType: CheckInType, transcription: String? = nil) {
+        self.id = id
         self.date = date
         self.rating = rating
         self.note = note
@@ -65,6 +68,11 @@ class UserModel: ObservableObject {
     @Published var selectedThemeIndex: Int = 0
     @Published var moodEntries: [MoodEntry] = []
     @Published var userId: String? = nil  // Store Firebase user ID
+    @Published var isLoadingData: Bool = false
+    @Published var syncError: String? = nil
+    
+    // Firestore reference
+    private var db = Firestore.firestore()
     
     // Theme options with carefully selected soothing colors
     let themeGradients: [ThemeGradient] = [
@@ -123,36 +131,162 @@ class UserModel: ObservableObject {
            let decodedEntries = try? JSONDecoder().decode([MoodEntry].self, from: savedEntriesData) {
             moodEntries = decodedEntries
         }
-    }
-    
-    // Save user preferences
-    func savePreferences() {
-        let defaults = UserDefaults.standard
-        defaults.set(isOnboarded, forKey: "isOnboarded")
-        defaults.set(selectedThemeIndex, forKey: "selectedThemeIndex")
         
-        // Save userId if available
+        // If user is already authenticated, fetch their data from Firestore
         if let userId = userId {
-            defaults.set(userId, forKey: "userId")
-        } else {
-            defaults.removeObject(forKey: "userId")
+            fetchUserData(userId: userId)
         }
         
-        // Save mood entries locally
-        if let encodedData = try? JSONEncoder().encode(moodEntries) {
-            defaults.set(encodedData, forKey: "moodEntries")
+        // Listen for auth state changes
+        Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            if let userId = user?.uid {
+                self?.userId = userId
+                self?.savePreferences()
+                self?.fetchUserData(userId: userId)
+            } else {
+                self?.userId = nil
+                self?.savePreferences()
+            }
         }
     }
     
-    // Save data to persistent storage
-    func saveData() {
-        savePreferences()
+    // Fetch user data from Firestore
+    func fetchUserData(userId: String) {
+        isLoadingData = true
+        syncError = nil
+        
+        // First, fetch user profile
+        db.collection("users").document(userId).getDocument { [weak self] document, error in
+            if let error = error {
+                self?.syncError = "Error fetching user data: \(error.localizedDescription)"
+                self?.isLoadingData = false
+                return
+            }
+            
+            // If user document doesn't exist yet, create it
+            guard let document = document, document.exists else {
+                // Create user profile
+                self?.createUserProfile(userId: userId)
+                self?.fetchMoodEntries(userId: userId)
+                return
+            }
+            
+            // User profile exists, update local data if needed
+            if let data = document.data() {
+                // If theme color is stored in profile, use it
+                if let themeIndex = data["themeIndex"] as? Int {
+                    self?.selectedThemeIndex = themeIndex
+                }
+            }
+            
+            // Continue to fetch mood entries
+            self?.fetchMoodEntries(userId: userId)
+        }
     }
     
-    // Add an entry to the timeline
-    func addTimelineEntry(text: String, type: TimelineEntryType) {
-        // In the current implementation, this is handled through addQuickUpdate or addMoodEntry
-        // This method can be extended later if needed
+    // Create initial user profile in Firestore
+    private func createUserProfile(userId: String) {
+        let userData: [String: Any] = [
+            "themeIndex": selectedThemeIndex,
+            "isOnboarded": true,
+            "createdAt": FieldValue.serverTimestamp()
+        ]
+        
+        db.collection("users").document(userId).setData(userData) { [weak self] error in
+            if let error = error {
+                self?.syncError = "Error creating user profile: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    // Fetch mood entries from Firestore
+    private func fetchMoodEntries(userId: String) {
+        db.collection("users").document(userId).collection("mood_logs")
+            .order(by: "date", descending: true)
+            .getDocuments { [weak self] querySnapshot, error in
+                self?.isLoadingData = false
+                
+                if let error = error {
+                    self?.syncError = "Error fetching mood entries: \(error.localizedDescription)"
+                    return
+                }
+                
+                guard let documents = querySnapshot?.documents, !documents.isEmpty else {
+                    // No entries yet in Firestore, upload local entries if any
+                    if let self = self, !self.moodEntries.isEmpty {
+                        self.syncMoodEntriesToFirestore()
+                    }
+                    return
+                }
+                
+                // Process fetched entries
+                var firestoreEntries: [MoodEntry] = []
+                
+                for document in documents {
+                    let data = document.data()
+                    
+                    // Convert Firestore data to MoodEntry
+                    if let dateTimestamp = data["date"] as? Timestamp,
+                       let rating = data["rating"] as? Int,
+                       let checkInTypeRaw = data["checkInType"] as? String,
+                       let checkInType = CheckInType(rawValue: checkInTypeRaw) {
+                        
+                        let entry = MoodEntry(
+                            id: UUID(uuidString: document.documentID) ?? UUID(),
+                            date: dateTimestamp.dateValue(),
+                            rating: rating,
+                            note: data["note"] as? String,
+                            audioURL: nil, // We'll implement audio storage later
+                            checkInType: checkInType,
+                            transcription: data["transcription"] as? String
+                        )
+                        
+                        firestoreEntries.append(entry)
+                    }
+                }
+                
+                // If we have entries from Firestore, use them
+                if !firestoreEntries.isEmpty {
+                    self?.moodEntries = firestoreEntries
+                    self?.savePreferences() // Save to local storage as backup
+                }
+            }
+    }
+    
+    // Sync current mood entries to Firestore
+    private func syncMoodEntriesToFirestore() {
+        guard let userId = userId else { return }
+        
+        let batch = db.batch()
+        
+        for entry in moodEntries {
+            let entryRef = db.collection("users").document(userId).collection("mood_logs").document(entry.id.uuidString)
+            
+            // Convert MoodEntry to Firestore data
+            var entryData: [String: Any] = [
+                "date": Timestamp(date: entry.date),
+                "rating": entry.rating,
+                "checkInType": entry.checkInType.rawValue
+            ]
+            
+            // Add optional fields
+            if let note = entry.note {
+                entryData["note"] = note
+            }
+            
+            if let transcription = entry.transcription {
+                entryData["transcription"] = transcription
+            }
+            
+            batch.setData(entryData, forDocument: entryRef)
+        }
+        
+        // Commit the batch
+        batch.commit { [weak self] error in
+            if let error = error {
+                self?.syncError = "Error syncing mood entries: \(error.localizedDescription)"
+            }
+        }
     }
     
     // Add a new mood entry
@@ -175,6 +309,9 @@ class UserModel: ObservableObject {
             if let transcription = transcription {
                 moodEntries[index].transcription = transcription
             }
+            
+            // Save to Firestore
+            saveEntryToFirestore(moodEntries[index])
         } else {
             // Create new entry
             let newEntry = MoodEntry(
@@ -185,12 +322,96 @@ class UserModel: ObservableObject {
                 transcription: transcription
             )
             moodEntries.append(newEntry)
+            
+            // Save to Firestore
+            saveEntryToFirestore(newEntry)
         }
         
         // Also add to timeline
         addTimelineEntry(text: note ?? transcription ?? "Updated my mood to \(rating)/10", type: .moodUpdate)
         
         saveData()
+    }
+    
+    // Save a single entry to Firestore
+    private func saveEntryToFirestore(_ entry: MoodEntry) {
+        guard let userId = userId else { return }
+        
+        let entryRef = db.collection("users").document(userId).collection("mood_logs").document(entry.id.uuidString)
+        
+        // Convert MoodEntry to Firestore data
+        var entryData: [String: Any] = [
+            "date": Timestamp(date: entry.date),
+            "rating": entry.rating,
+            "checkInType": entry.checkInType.rawValue
+        ]
+        
+        // Add optional fields
+        if let note = entry.note {
+            entryData["note"] = note
+        }
+        
+        if let transcription = entry.transcription {
+            entryData["transcription"] = transcription
+        }
+        
+        // Save to Firestore
+        entryRef.setData(entryData) { [weak self] error in
+            if let error = error {
+                self?.syncError = "Error saving mood entry: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    // Update user profile in Firestore when preferences change
+    private func updateUserProfile() {
+        guard let userId = userId else { return }
+        
+        let userData: [String: Any] = [
+            "themeIndex": selectedThemeIndex,
+            "isOnboarded": isOnboarded,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        
+        // Use setData with merge option instead of updateData to handle non-existent documents
+        db.collection("users").document(userId).setData(userData, merge: true) { [weak self] error in
+            if let error = error {
+                self?.syncError = "Error updating user profile: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    // Save user preferences
+    func savePreferences() {
+        let defaults = UserDefaults.standard
+        defaults.set(isOnboarded, forKey: "isOnboarded")
+        defaults.set(selectedThemeIndex, forKey: "selectedThemeIndex")
+        
+        // Save userId if available
+        if let userId = userId {
+            defaults.set(userId, forKey: "userId")
+            
+            // Update user profile in Firestore
+            updateUserProfile()
+        } else {
+            defaults.removeObject(forKey: "userId")
+        }
+        
+        // Save mood entries locally
+        if let encodedData = try? JSONEncoder().encode(moodEntries) {
+            defaults.set(encodedData, forKey: "moodEntries")
+        }
+    }
+    
+    // Save data to persistent storage
+    func saveData() {
+        savePreferences()
+    }
+    
+    // Add an entry to the timeline
+    func addTimelineEntry(text: String, type: TimelineEntryType) {
+        // In the current implementation, this is handled through addQuickUpdate or addMoodEntry
+        // This method can be extended later if needed
     }
     
     // Get today's entry index for a specific check-in type (morning/evening)
@@ -252,6 +473,9 @@ class UserModel: ObservableObject {
         
         // Add to local array
         moodEntries.append(newEntry)
+        
+        // Save to Firestore
+        saveEntryToFirestore(newEntry)
         
         // Save changes
         savePreferences()

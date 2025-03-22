@@ -31,49 +31,93 @@ struct MainTabView: View {
     @EnvironmentObject private var userModel: UserModel
     
     var body: some View {
-        TabView {
-            NavigationStack {
-                HomeView()
+        ZStack {
+            TabView {
+                NavigationStack {
+                    HomeView()
+                }
+                .tabItem {
+                    Image(systemName: "sun.max.fill")
+                    Text("Today")
+                }
+                
+                NavigationStack {
+                    TimelineView()
+                        .navigationBarHidden(true)
+                }
+                .tabItem {
+                    Image(systemName: "calendar")
+                    Text("History")
+                }
+                
+                NavigationStack {
+                    Text("Insights View")
+                        .font(.title)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(
+                            Color(userModel.activeTheme.mainColor)
+                                .ignoresSafeArea()
+                        )
+                        .navigationTitle("Insights")
+                }
+                .tabItem {
+                    Image(systemName: "chart.bar.fill")
+                    Text("Insights")
+                }
             }
-            .tabItem {
-                Image(systemName: "sun.max.fill")
-                Text("Today")
+            .accentColor(.white)
+            .onAppear {
+                // Set the tab bar appearance
+                let appearance = UITabBarAppearance()
+                appearance.configureWithOpaqueBackground()
+                appearance.backgroundColor = UIColor.black
+                
+                UITabBar.appearance().standardAppearance = appearance
+                UITabBar.appearance().scrollEdgeAppearance = appearance
             }
             
-            NavigationStack {
-                TimelineView()
-                    .navigationBarHidden(true)
-            }
-            .tabItem {
-                Image(systemName: "calendar")
-                Text("History")
-            }
-            
-            NavigationStack {
-                Text("Insights View")
-                    .font(.title)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(
-                        Color(userModel.activeTheme.mainColor)
-                            .ignoresSafeArea()
+            // Loading overlay
+            if userModel.isLoadingData {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .overlay(
+                        VStack(spacing: 15) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.5)
+                            
+                            Text("Loading your data...")
+                                .font(.callout)
+                                .foregroundColor(.white)
+                        }
                     )
-                    .navigationTitle("Insights")
             }
-            .tabItem {
-                Image(systemName: "chart.bar.fill")
-                Text("Insights")
-            }
-        }
-        .accentColor(.white)
-        .onAppear {
-            // Set the tab bar appearance
-            let appearance = UITabBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = UIColor.black
             
-            UITabBar.appearance().standardAppearance = appearance
-            UITabBar.appearance().scrollEdgeAppearance = appearance
+            // Error toast
+            if let error = userModel.syncError {
+                VStack {
+                    Spacer()
+                    
+                    Text(error)
+                        .font(.callout)
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.red.opacity(0.8))
+                        .cornerRadius(10)
+                        .padding()
+                }
+                .transition(.move(edge: .bottom))
+                .animation(.spring(), value: userModel.syncError)
+                .onAppear {
+                    // Auto-dismiss after 3 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        if userModel.syncError == error {
+                            userModel.syncError = nil
+                        }
+                    }
+                }
+            }
         }
     }
 }
