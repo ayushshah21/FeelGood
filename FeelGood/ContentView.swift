@@ -723,39 +723,23 @@ struct CheckInView: View {
                                     )
                                     .offset(x: thumbPosition)
                                     .scaleEffect(isDragging ? 1.1 : 1.0)
+                                    .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isDragging)
                                     .gesture(
                                         DragGesture(minimumDistance: 0)
                                             .onChanged { value in
-                                                // Calculate position within the slider bounds
-                                                let newOffset = min(max(0, value.location.x - thumbWidth / 2), maxOffset)
-                                                let newPercentage = newOffset / maxOffset
-                                                let newRating = 1.0 + newPercentage * 9.0
-                                                
-                                                // Detect category changes
-                                                let oldCategory = Int(moodRating) / 3
-                                                let newCategory = Int(newRating) / 3
-                                                
-                                                // Update rating with minimal animation for smooth dragging
-                                                withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0.1)) {
-                                                    moodRating = newRating.rounded()
-                                                    isDragging = true
-                                                }
-                                                
-                                                if oldCategory != newCategory {
-                                                    animateEmoji = true
-                                                    
+                                                let percentage = min(max(0, value.location.x / sliderWidth), 1)
+                                                let newRating = 1.0 + percentage * 9.0
+                                                if newRating != moodRating {
+                                                    withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.7, blendDuration: 0.1)) {
+                                                        moodRating = newRating
+                                                        isDragging = true
+                                                    }
                                                     // Add haptic feedback
                                                     let generator = UIImpactFeedbackGenerator(style: .light)
                                                     generator.impactOccurred()
-                                                    
-                                                    // Reset animation
-                                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                                        animateEmoji = false
-                                                    }
                                                 }
                                             }
                                             .onEnded { _ in
-                                                // End dragging state when gesture ends
                                                 withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                                                     isDragging = false
                                                 }
@@ -833,120 +817,111 @@ struct CheckInView: View {
                                     .padding(.horizontal)
                             } else {
                                 // Voice recording UI
-                                VStack(spacing: 6) {
-                                    Button(action: {
-                                        if showRecordingIndicator && whisperService.isRecording {
+                                VStack(alignment: .center, spacing: 10) {
+                                    Button {
+                                        if isRecording {
                                             // Stop recording
                                             whisperService.stopRecording()
+                                            isRecording = false
                                         } else {
                                             // Start recording
                                             whisperService.transcriptionCompletionHandler = { transcription in
                                                 note = transcription
                                             }
-                                            showRecordingIndicator = true
                                             whisperService.startRecording()
+                                            isRecording = true
                                             // Haptic feedback
                                             let generator = UIImpactFeedbackGenerator(style: .medium)
                                             generator.impactOccurred()
                                         }
-                                    }) {
-                                        Circle()
-                                            .fill(Color.white.opacity(0.2))
-                                            .frame(width: 70, height: 70)
-                                            .overlay(
-                                                Group {
-                                                    if showRecordingIndicator {
-                                                        if whisperService.isRecording {
-                                                            // Animated recording indicator
+                                    } label: {
+                                        VStack(alignment: .center, spacing: 8) {
+                                            Circle()
+                                                .fill(Color.white.opacity(0.2))
+                                                .frame(width: 60, height: 60)
+                                                .overlay(
+                                                    Group {
+                                                        if isRecording {
+                                                            // Recording indicator
                                                             ZStack {
                                                                 Circle()
                                                                     .fill(Color.red.opacity(0.8))
-                                                                    .frame(width: 24, height: 24)
+                                                                    .frame(width: 20, height: 20)
                                                                 
                                                                 Circle()
                                                                     .stroke(Color.red, lineWidth: 2)
-                                                                    .frame(width: 40, height: 40)
-                                                                    .scaleEffect(whisperService.isRecording ? 1.5 : 1.0)
-                                                                    .opacity(whisperService.isRecording ? 0.0 : 1.0)
+                                                                    .frame(width: 36, height: 36)
+                                                                    .scaleEffect(isRecording ? 1.5 : 1.0)
+                                                                    .opacity(isRecording ? 0.0 : 1.0)
                                                                     .animation(
                                                                         Animation.easeOut(duration: 1)
                                                                             .repeatForever(autoreverses: false),
-                                                                        value: whisperService.isRecording
+                                                                        value: isRecording
                                                                     )
                                                             }
                                                         } else if whisperService.isTranscribing {
-                                                            // Transcribing progress indicator
+                                                            // Transcribing indicator
                                                             ProgressView()
                                                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                                                .scaleEffect(1.5)
+                                                                .scaleEffect(1.2)
                                                         } else {
                                                             Image(systemName: "mic.fill")
-                                                                .font(.title2)
+                                                                .font(.title3)
                                                                 .foregroundColor(.white)
                                                         }
-                                                    } else {
-                                                        Image(systemName: "mic.fill")
-                                                            .font(.title2)
-                                                            .foregroundColor(.white)
                                                     }
-                                                }
-                                            )
+                                                )
+                                            
+                                            Text(isRecording ? "Tap to stop" : whisperService.isTranscribing ? "Transcribing..." : "Tap to record")
+                                                .font(.caption)
+                                                .foregroundColor(.white.opacity(0.8))
+                                        }
                                     }
                                     .buttonStyle(ScaleButtonStyle())
-                                    
-                                    if showRecordingIndicator && whisperService.isRecording {
-                                        Text("Tap to stop recording")
-                                            .font(.caption)
-                                            .foregroundColor(.white.opacity(0.8))
-                                    } else if showRecordingIndicator && whisperService.isTranscribing {
-                                        Text("Transcribing...")
-                                            .font(.caption)
-                                            .foregroundColor(.white.opacity(0.8))
-                                    } else {
-                                        Text("Tap to start recording")
-                                            .font(.caption)
-                                            .foregroundColor(.white.opacity(0.8))
-                                    }
-                                    
+                                    .frame(maxWidth: .infinity)
+                                
                                     if !whisperService.permissionGranted && whisperService.errorMessage != nil {
                                         Text(whisperService.errorMessage ?? "Permission needed")
                                             .font(.caption)
                                             .foregroundColor(.red)
                                             .padding(.top, 4)
+                                            .frame(maxWidth: .infinity, alignment: .center)
                                     }
                                     
                                     if !whisperService.transcription.isEmpty {
-                                        HStack {
+                                        VStack(alignment: .leading, spacing: 8) {
                                             Text("Transcription:")
                                                 .font(.caption)
-                                                .foregroundColor(.white)
+                                                .foregroundColor(.white.opacity(0.8))
                                             
                                             Text(whisperService.transcription)
                                                 .font(.body)
                                                 .foregroundColor(.white)
                                                 .padding()
-                                                .background(Color.white.opacity(0.1))
-                                                .cornerRadius(12)
+                                                .background(Color.white.opacity(0.15))
+                                                .cornerRadius(10)
+                                            
+                                            Button("Use This Text") {
+                                                note = whisperService.transcription
+                                                showRecordingIndicator = false // Switch to text mode
+                                                whisperService.resetState()
+                                            }
+                                            .font(.caption)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 6)
+                                            .background(Color.white.opacity(0.2))
+                                            .cornerRadius(12)
+                                            .padding(.top, 5)
                                         }
-                                        .padding(.horizontal)
-                                        .padding(.top, 10)
-                                        
-                                        Button("Use This Text") {
-                                            note = whisperService.transcription
-                                            isRecording = true  // Switch to text mode
-                                            showRecordingIndicator = false
-                                            whisperService.resetState()
-                                        }
-                                        .font(.caption)
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 8)
-                                        .background(Color.white.opacity(0.2))
-                                        .cornerRadius(15)
-                                        .padding(.top, 5)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding()
+                                        .background(Color.white.opacity(0.1))
+                                        .cornerRadius(12)
                                     }
                                 }
-                                .padding(.vertical, 15)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 30)
                             }
                         }
                         
@@ -1163,9 +1138,10 @@ struct QuickUpdateView: View {
     @State private var isTextInputActive = false
     @State private var showRecordingUI = false
     @State private var isRecording = false
+    @State private var isDragging = false
     
     // Define slider dimensions as constants
-    private let thumbWidth: CGFloat = 28
+    private let thumbWidth: CGFloat = 35
     private let trackHeight: CGFloat = 8
     
     var body: some View {
@@ -1245,6 +1221,21 @@ struct QuickUpdateView: View {
                                         Capsule()
                                             .fill(moodColor(for: moodRating))
                                             .frame(width: fillWidth, height: trackHeight)
+                                        
+                                        // Add white circle thumb with number inside
+                                        let thumbPosition = ((CGFloat(moodRating) - 1) / 9) * (geometry.size.width - thumbWidth)
+                                        Circle()
+                                            .fill(.white)
+                                            .frame(width: thumbWidth, height: thumbWidth)
+                                            .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
+                                            .overlay(
+                                                Text("\(moodRating)")
+                                                    .font(.system(size: 14, weight: .semibold))
+                                                    .foregroundColor(userModel.activeTheme.mainColor)
+                                            )
+                                            .offset(x: thumbPosition)
+                                            .scaleEffect(isDragging ? 1.1 : 1.0)
+                                            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isDragging)
                                     }
                                     .gesture(
                                         DragGesture(minimumDistance: 0)
@@ -1252,10 +1243,18 @@ struct QuickUpdateView: View {
                                                 let percentage = min(max(0, value.location.x / geometry.size.width), 1)
                                                 let newRating = Int(percentage * 9) + 1
                                                 if newRating != moodRating {
-                                                    moodRating = newRating
+                                                    withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.7, blendDuration: 0.1)) {
+                                                        moodRating = newRating
+                                                        isDragging = true
+                                                    }
                                                     // Add haptic feedback
                                                     let generator = UIImpactFeedbackGenerator(style: .light)
                                                     generator.impactOccurred()
+                                                }
+                                            }
+                                            .onEnded { _ in
+                                                withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                                                    isDragging = false
                                                 }
                                             }
                                     )
@@ -1303,7 +1302,7 @@ struct QuickUpdateView: View {
                             
                             if showRecordingUI {
                                 // Voice recording UI
-                                VStack(spacing: 10) {
+                                VStack(alignment: .center, spacing: 10) {
                                     Button {
                                         if isRecording {
                                             // Stop recording
@@ -1321,7 +1320,7 @@ struct QuickUpdateView: View {
                                             generator.impactOccurred()
                                         }
                                     } label: {
-                                        VStack {
+                                        VStack(alignment: .center, spacing: 8) {
                                             Circle()
                                                 .fill(Color.white.opacity(0.2))
                                                 .frame(width: 60, height: 60)
@@ -1364,12 +1363,14 @@ struct QuickUpdateView: View {
                                         }
                                     }
                                     .buttonStyle(ScaleButtonStyle())
-                                    
+                                    .frame(maxWidth: .infinity)
+                                
                                     if !whisperService.permissionGranted && whisperService.errorMessage != nil {
                                         Text(whisperService.errorMessage ?? "Permission needed")
                                             .font(.caption)
                                             .foregroundColor(.red)
                                             .padding(.top, 4)
+                                            .frame(maxWidth: .infinity, alignment: .center)
                                     }
                                     
                                     if !whisperService.transcription.isEmpty {
@@ -1404,7 +1405,8 @@ struct QuickUpdateView: View {
                                         .cornerRadius(12)
                                     }
                                 }
-                                .padding(.vertical, 5)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 30)
                             } else {
                                 // Text input
                                 TextEditor(text: $note)
