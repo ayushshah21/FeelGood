@@ -835,14 +835,20 @@ struct CheckInView: View {
                                 Spacer()
                                 
                                 Button(action: {
-                                    isRecording.toggle()
+                                    showRecordingIndicator.toggle()
                                     let generator = UIImpactFeedbackGenerator(style: .light)
                                     generator.impactOccurred()
+                                    
+                                    // Reset recording state when switching modes
+                                    if !showRecordingIndicator {
+                                        isRecording = false
+                                        whisperService.resetState()
+                                    }
                                 }) {
                                     HStack(spacing: 4) {
-                                        Image(systemName: isRecording ? "mic.fill" : "keyboard")
+                                        Image(systemName: showRecordingIndicator ? "keyboard" : "mic.fill")
                                             .font(.subheadline)
-                                        Text(isRecording ? "Use Voice" : "Use Text")
+                                        Text(showRecordingIndicator ? "Use Text" : "Use Voice")
                                             .font(.subheadline)
                                     }
                                     .foregroundColor(.white)
@@ -854,7 +860,7 @@ struct CheckInView: View {
                             }
                             .padding(.horizontal)
                             
-                            if isRecording {
+                            if !showRecordingIndicator {
                                 TextField("", text: $note)
                                     .font(.body)
                                     .foregroundColor(.white)
@@ -1015,6 +1021,8 @@ struct CheckInView: View {
         .onAppear {
             loadExistingData()
             whisperService.resetState()
+            isRecording = false
+            showRecordingIndicator = false
         }
         .onDisappear {
             if whisperService.isRecording {
