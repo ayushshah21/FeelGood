@@ -52,8 +52,8 @@ struct MainTabView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(
-                        userModel.activeTheme.mainColor
-                        .ignoresSafeArea()
+                        Color(userModel.activeTheme.mainColor)
+                            .ignoresSafeArea()
                     )
                     .navigationTitle("Insights")
             }
@@ -83,8 +83,8 @@ struct OnboardingView: View {
     var body: some View {
         ZStack {
             // Solid color background
-            userModel.activeTheme.mainColor
-            .ignoresSafeArea()
+            Color(userModel.activeTheme.mainColor)
+                .ignoresSafeArea()
             
             VStack(spacing: 30) {
                 // Back button
@@ -253,8 +253,8 @@ struct HomeView: View {
     var body: some View {
         ZStack {
             // Solid color background
-            userModel.activeTheme.mainColor
-            .ignoresSafeArea()
+            Color(userModel.activeTheme.mainColor)
+                .ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: 20) {
@@ -423,7 +423,7 @@ struct HomeView: View {
                         // Recent check-in - now linked to TimelineView
                         if let lastEntry = userModel.getLastEntry() {
                             HStack {
-                                Text(formatTime(date: lastEntry.timestamp))
+                                Text(formatTime(date: lastEntry.date))
                                     .font(.system(size: 17, weight: .medium))
                                     .foregroundColor(.white)
                                 
@@ -506,10 +506,10 @@ struct HomeView: View {
                     }
                 }
             }
-            .scrollIndicators(.hidden)
-            .sheet(isPresented: $showSettings) {
-                SettingsView()
-            }
+        }
+        .scrollIndicators(.hidden)
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
         }
         .navigationBarHidden(true)
     }
@@ -554,6 +554,7 @@ struct HomeView: View {
 struct CheckInView: View {
     @EnvironmentObject private var userModel: UserModel
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var whisperService = WhisperService.shared
     
     var checkInType: CheckInType
     var isEditing: Bool
@@ -563,6 +564,7 @@ struct CheckInView: View {
     @State private var note: String = ""
     @State private var animateEmoji = false
     @State private var isDragging = false
+    @State private var showRecordingIndicator = false
     
     // Initialize with default values if not provided
     init(checkInType: CheckInType = .morning, isEditing: Bool = false) {
@@ -630,7 +632,7 @@ struct CheckInView: View {
     var body: some View {
         ZStack {
             // Solid color background
-            userModel.activeTheme.mainColor
+            Color(userModel.activeTheme.mainColor)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -830,9 +832,20 @@ struct CheckInView: View {
                                     .cornerRadius(15)
                                     .padding(.horizontal)
                             } else {
+                                // Voice recording UI
                                 VStack(spacing: 6) {
                                     Button(action: {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        if showRecordingIndicator && whisperService.isRecording {
+                                            // Stop recording
+                                            whisperService.stopRecording()
+                                        } else {
+                                            // Start recording
+                                            whisperService.transcriptionCompletionHandler = { transcription in
+                                                note = transcription
+                                            }
+                                            showRecordingIndicator = true
+                                            whisperService.startRecording()
+                                            // Haptic feedback
                                             let generator = UIImpactFeedbackGenerator(style: .medium)
                                             generator.impactOccurred()
                                         }
@@ -841,18 +854,99 @@ struct CheckInView: View {
                                             .fill(Color.white.opacity(0.2))
                                             .frame(width: 70, height: 70)
                                             .overlay(
-                                                Image(systemName: "mic.fill")
-                                                    .font(.title2)
-                                                    .foregroundColor(.white)
+                                                Group {
+                                                    if showRecordingIndicator {
+                                                        if whisperService.isRecording {
+                                                            // Animated recording indicator
+                                                            ZStack {
+                                                                Circle()
+                                                                    .fill(Color.red.opacity(0.8))
+                                                                    .frame(width: 24, height: 24)
+                                                                
+                                                                Circle()
+                                                                    .stroke(Color.red, lineWidth: 2)
+                                                                    .frame(width: 40, height: 40)
+                                                                    .scaleEffect(whisperService.isRecording ? 1.5 : 1.0)
+                                                                    .opacity(whisperService.isRecording ? 0.0 : 1.0)
+                                                                    .animation(
+                                                                        Animation.easeOut(duration: 1)
+                                                                            .repeatForever(autoreverses: false),
+                                                                        value: whisperService.isRecording
+                                                                    )
+                                                            }
+                                                        } else if whisperService.isTranscribing {
+                                                            // Transcribing progress indicator
+                                                            ProgressView()
+                                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                                .scaleEffect(1.5)
+                                                        } else {
+                                                            Image(systemName: "mic.fill")
+                                                                .font(.title2)
+                                                                .foregroundColor(.white)
+                                                        }
+                                                    } else {
+                                                        Image(systemName: "mic.fill")
+                                                            .font(.title2)
+                                                            .foregroundColor(.white)
+                                                    }
+                                                }
                                             )
                                     }
                                     .buttonStyle(ScaleButtonStyle())
                                     
-                                    Text("Tap to start recording")
+                                    if showRecordingIndicator && whisperService.isRecording {
+                                        Text("Tap to stop recording")
+                                            .font(.caption)
+                                            .foregroundColor(.white.opacity(0.8))
+                                    } else if showRecordingIndicator && whisperService.isTranscribing {
+                                        Text("Transcribing...")
+                                            .font(.caption)
+                                            .foregroundColor(.white.opacity(0.8))
+                                    } else {
+                                        Text("Tap to start recording")
+                                            .font(.caption)
+                                            .foregroundColor(.white.opacity(0.8))
+                                    }
+                                    
+                                    if !whisperService.permissionGranted && whisperService.errorMessage != nil {
+                                        Text(whisperService.errorMessage ?? "Permission needed")
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                            .padding(.top, 4)
+                                    }
+                                    
+                                    if !whisperService.transcription.isEmpty {
+                                        HStack {
+                                            Text("Transcription:")
+                                                .font(.caption)
+                                                .foregroundColor(.white)
+                                            
+                                            Text(whisperService.transcription)
+                                                .font(.body)
+                                                .foregroundColor(.white)
+                                                .padding()
+                                                .background(Color.white.opacity(0.1))
+                                                .cornerRadius(12)
+                                        }
+                                        .padding(.horizontal)
+                                        .padding(.top, 10)
+                                        
+                                        Button("Use This Text") {
+                                            note = whisperService.transcription
+                                            isRecording = true  // Switch to text mode
+                                            showRecordingIndicator = false
+                                            whisperService.resetState()
+                                        }
                                         .font(.caption)
-                                        .foregroundColor(.white.opacity(0.8))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(Color.white.opacity(0.2))
+                                        .cornerRadius(15)
+                                        .padding(.top, 5)
+                                    }
                                 }
-                                .padding(.top, 5)
+                                .padding(.vertical, 15)
                             }
                         }
                         
@@ -898,6 +992,13 @@ struct CheckInView: View {
         .navigationBarHidden(true)
         .onAppear {
             loadExistingData()
+            whisperService.resetState()
+        }
+        .onDisappear {
+            if whisperService.isRecording {
+                whisperService.stopRecording()
+            }
+            whisperService.resetState()
         }
     }
     
@@ -928,7 +1029,7 @@ struct SettingsView: View {
         NavigationStack {
             ZStack {
                 // Solid color background
-                userModel.activeTheme.mainColor
+                Color(userModel.activeTheme.mainColor)
                 .ignoresSafeArea()
                 
                 ScrollView {
@@ -1054,71 +1155,27 @@ struct SettingsView: View {
 struct QuickUpdateView: View {
     @EnvironmentObject private var userModel: UserModel
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var whisperService = WhisperService.shared
     
-    @State private var showMoodRating = false
-    @State private var moodRating: Double = 7
-    @State private var note: String = ""
-    @State private var isUsingVoice = true
-    @State private var animateEmoji = false
-    @State private var isDragging = false
+    @State private var note = ""
+    @State private var moodRating: Int = 7
+    @State private var isExpanded = false
+    @State private var isTextInputActive = false
+    @State private var showRecordingUI = false
+    @State private var isRecording = false
     
-    private let sliderWidth: CGFloat = UIScreen.main.bounds.width * 0.75
-    private let thumbWidth: CGFloat = 35
-    private let trackHeight: CGFloat = 12
-    
-    var moodText: String {
-        switch Int(moodRating) {
-        case 1...3:
-            return "Not great"
-        case 4...6:
-            return "Okay"
-        case 7...8:
-            return "Pretty good"
-        case 9...10:
-            return "Amazing!"
-        default:
-            return "Okay"
-        }
-    }
-    
-    var moodEmoji: String {
-        switch Int(moodRating) {
-        case 1...3:
-            return "😔"
-        case 4...6:
-            return "😐"
-        case 7...8:
-            return "🙂"
-        case 9...10:
-            return "😄"
-        default:
-            return "🙂"
-        }
-    }
-    
-    var moodRatingColor: Color {
-        switch Int(moodRating) {
-        case 1...3:
-            return .red.opacity(0.7)
-        case 4...6:
-            return .yellow.opacity(0.7)
-        case 7...8:
-            return .green.opacity(0.7)
-        case 9...10:
-            return Color(hex: "00FF00").opacity(0.7) // Bright green
-        default:
-            return .green.opacity(0.7)
-        }
-    }
+    // Define slider dimensions as constants
+    private let thumbWidth: CGFloat = 28
+    private let trackHeight: CGFloat = 8
     
     var body: some View {
         ZStack {
-            // Background color
-            userModel.activeTheme.mainColor
+            // Background
+            Color(userModel.activeTheme.mainColor)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header
+                // Custom header
                 HStack {
                     Button(action: {
                         dismiss()
@@ -1144,255 +1201,240 @@ struct QuickUpdateView: View {
                 .padding(.horizontal)
                 .padding(.top, 10)
                 
-                // Main content
                 ScrollView {
-                    VStack(spacing: 16) {
-                        // What's on your mind?
-                        Text("What's on your mind?")
-                            .font(.system(size: 34, weight: .bold))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 20)
-                        
-                        // Current time - ensure it fits
-                        Text(formattedTime())
-                            .font(.headline)
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(.bottom, 5)
-                            .padding(.horizontal)
-                        
-                        // Optional Mood Rating
-                        if showMoodRating {
-                            VStack(spacing: 5) {
-                                // Current Mood Section
-                                HStack {
-                                    Text("Current Mood")
-                                        .font(.headline)
-                                        .foregroundColor(.white)
-                                    
-                                    Spacer()
-                                    
-                                    // Close button
-                                    Button(action: {
-                                        withAnimation {
-                                            showMoodRating = false
-                                        }
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.title3)
-                                            .foregroundColor(.white.opacity(0.8))
-                                    }
-                                }
-                                .padding(.horizontal)
-                                
-                                // Emoji
-                                Text(moodEmoji)
-                                    .font(.system(size: 70))
-                                    .padding(.vertical, 5)
-                                
-                                // Mood text
-                                Text(moodText)
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                
-                                // Custom slider for mood rating
-                                ZStack(alignment: .leading) {
-                                    // Background track
-                                    Capsule()
-                                        .frame(width: sliderWidth, height: trackHeight)
-                                        .foregroundColor(.white.opacity(0.3))
-                                    
-                                    // Calculate exact positions for alignment
-                                    let maxOffset = sliderWidth - thumbWidth
-                                    let percentage = (moodRating - 1.0) / 9.0
-                                    let thumbPosition = percentage * maxOffset
-                                    let fillWidth = thumbPosition + (thumbWidth / 2)
-                                    
-                                    // Filled portion
-                                    Capsule()
-                                        .frame(width: fillWidth, height: trackHeight)
-                                        .foregroundColor(moodRatingColor)
-                                        
-                                    // Slider thumb
-                                    Circle()
-                                        .fill(.white)
-                                        .frame(width: thumbWidth, height: thumbWidth)
-                                        .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
-                                        .overlay(
-                                            Text("\(Int(moodRating))")
-                                                .font(.system(size: 16, weight: .semibold))
-                                                .foregroundColor(userModel.activeTheme.mainColor)
-                                        )
-                                        .offset(x: thumbPosition)
-                                        .scaleEffect(isDragging ? 1.1 : 1.0)
-                                        .gesture(
-                                            DragGesture(minimumDistance: 0)
-                                                .onChanged { value in
-                                                    // Calculate position within slider bounds
-                                                    let newOffset = min(max(0, value.location.x - thumbWidth / 2), maxOffset)
-                                                    let newPercentage = newOffset / maxOffset
-                                                    let newRating = 1.0 + newPercentage * 9.0
-                                                    
-                                                    // Detect category changes
-                                                    let oldCategory = Int(moodRating) / 3
-                                                    let newCategory = Int(newRating) / 3
-                                                    
-                                                    // Update rating with minimal animation
-                                                    withAnimation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0.1)) {
-                                                        moodRating = newRating.rounded()
-                                                        isDragging = true
-                                                    }
-                                                    
-                                                    if oldCategory != newCategory {
-                                                        animateEmoji = true
-                                                        
-                                                        // Haptic feedback
-                                                        let generator = UIImpactFeedbackGenerator(style: .light)
-                                                        generator.impactOccurred()
-                                                        
-                                                        // Reset animation
-                                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                                            animateEmoji = false
-                                                        }
-                                                    }
-                                                }
-                                                .onEnded { _ in
-                                                    // End dragging state
-                                                    withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-                                                        isDragging = false
-                                                    }
-                                                }
-                                        )
-                                }
-                                .frame(width: sliderWidth)
-                                .contentShape(Rectangle())
-                                .padding(.vertical, 15)
-                            }
-                            .padding(.vertical, 10)
-                        } else {
-                            // Button to add mood rating
-                            Button(action: {
-                                withAnimation {
-                                    showMoodRating = true
-                                }
-                            }) {
-                                HStack {
-                                    Image(systemName: "plus")
-                                        .font(.subheadline)
-                                    
-                                    Text("Add Current Mood Rating")
-                                        .font(.subheadline)
-                                }
+                    VStack(spacing: 20) {
+                        HStack {
+                            Text("How are you feeling right now?")
+                                .font(.system(size: 22, weight: .semibold))
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(25)
-                            }
-                            .padding(.vertical, 15)
+                                .multilineTextAlignment(.leading)
+                            Spacer()
                         }
+                        .padding(.horizontal)
+                        .padding(.top, 10)
                         
-                        Divider()
-                            .background(Color.white.opacity(0.3))
-                            .padding(.horizontal)
-                        
-                        // What's happening section
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("What's happening?")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .padding(.horizontal)
-                            
-                            // Toggle between voice and text
+                        // Compact mood slider
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack {
+                                Text("My mood:")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.8))
+                                
                                 Spacer()
                                 
-                                Button(action: {
-                                    withAnimation {
-                                        isUsingVoice.toggle()
-                                    }
-                                    
-                                    // Haptic feedback
-                                    let generator = UIImpactFeedbackGenerator(style: .light)
-                                    generator.impactOccurred()
-                                }) {
-                                    HStack(spacing: 5) {
-                                        Image(systemName: isUsingVoice ? "keyboard" : "mic.fill")
-                                            .font(.system(size: 15))
-                                        
-                                        Text(isUsingVoice ? "Use Text" : "Use Voice")
-                                            .font(.system(size: 15, weight: .medium))
-                                    }
+                                Text("\(moodRating)/10")
+                                    .font(.subheadline.bold())
                                     .foregroundColor(.white)
-                                    .padding(.horizontal, 15)
-                                    .padding(.vertical, 8)
-                                    .background(Color.white.opacity(0.2))
-                                    .cornerRadius(20)
-                                }
-                                .buttonStyle(ScaleButtonStyle())
                             }
                             
-                            if isUsingVoice {
+                            HStack(spacing: 8) {
+                                Image(systemName: "😔")
+                                    .font(.title3)
+                                    .foregroundColor(.white)
+                                
+                                // Custom slider
+                                GeometryReader { geometry in
+                                    ZStack(alignment: .leading) {
+                                        // Background track
+                                        Capsule()
+                                            .fill(Color.white.opacity(0.3))
+                                            .frame(height: trackHeight)
+                                        
+                                        // Filled track - calculate width based on rating
+                                        let fillWidth = ((CGFloat(moodRating) - 1) / 9) * geometry.size.width
+                                        Capsule()
+                                            .fill(moodColor(for: moodRating))
+                                            .frame(width: fillWidth, height: trackHeight)
+                                    }
+                                    .gesture(
+                                        DragGesture(minimumDistance: 0)
+                                            .onChanged { value in
+                                                let percentage = min(max(0, value.location.x / geometry.size.width), 1)
+                                                let newRating = Int(percentage * 9) + 1
+                                                if newRating != moodRating {
+                                                    moodRating = newRating
+                                                    // Add haptic feedback
+                                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                                    generator.impactOccurred()
+                                                }
+                                            }
+                                    )
+                                }
+                                .frame(height: 30)
+                                
+                                Image(systemName: "😄")
+                                    .font(.title3)
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .padding(.horizontal)
+                        
+                        // Input section
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Share your thoughts")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.8))
+                                
+                                Spacer()
+                                
+                                // Toggle between voice and text input
+                                Button {
+                                    showRecordingUI.toggle()
+                                    if showRecordingUI {
+                                        // Reset recording state when switching to voice
+                                        isRecording = false
+                                        whisperService.resetState()
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: showRecordingUI ? "mic.fill" : "keyboard")
+                                            .foregroundColor(.white)
+                                        Text(showRecordingUI ? "Voice" : "Text")
+                                            .font(.caption)
+                                            .foregroundColor(.white)
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(12)
+                                }
+                            }
+                            
+                            if showRecordingUI {
                                 // Voice recording UI
-                                VStack(spacing: 15) {
-                                    // Microphone button
-                                    Button(action: {
-                                        // Handle voice recording
-                                        // (Will be implemented in future)
-                                    }) {
-                                        ZStack {
+                                VStack(spacing: 10) {
+                                    Button {
+                                        if isRecording {
+                                            // Stop recording
+                                            whisperService.stopRecording()
+                                            isRecording = false
+                                        } else {
+                                            // Start recording
+                                            whisperService.transcriptionCompletionHandler = { transcription in
+                                                note = transcription
+                                            }
+                                            whisperService.startRecording()
+                                            isRecording = true
+                                            // Haptic feedback
+                                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                                            generator.impactOccurred()
+                                        }
+                                    } label: {
+                                        VStack {
                                             Circle()
                                                 .fill(Color.white.opacity(0.2))
-                                                .frame(width: 90, height: 90)
+                                                .frame(width: 60, height: 60)
+                                                .overlay(
+                                                    Group {
+                                                        if isRecording {
+                                                            // Recording indicator
+                                                            ZStack {
+                                                                Circle()
+                                                                    .fill(Color.red.opacity(0.8))
+                                                                    .frame(width: 20, height: 20)
+                                                                
+                                                                Circle()
+                                                                    .stroke(Color.red, lineWidth: 2)
+                                                                    .frame(width: 36, height: 36)
+                                                                    .scaleEffect(isRecording ? 1.5 : 1.0)
+                                                                    .opacity(isRecording ? 0.0 : 1.0)
+                                                                    .animation(
+                                                                        Animation.easeOut(duration: 1)
+                                                                            .repeatForever(autoreverses: false),
+                                                                        value: isRecording
+                                                                    )
+                                                            }
+                                                        } else if whisperService.isTranscribing {
+                                                            // Transcribing indicator
+                                                            ProgressView()
+                                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                                .scaleEffect(1.2)
+                                                        } else {
+                                                            Image(systemName: "mic.fill")
+                                                                .font(.title3)
+                                                                .foregroundColor(.white)
+                                                        }
+                                                    }
+                                                )
                                             
-                                            Image(systemName: "mic.fill")
-                                                .font(.system(size: 32))
-                                                .foregroundColor(.white)
+                                            Text(isRecording ? "Tap to stop" : whisperService.isTranscribing ? "Transcribing..." : "Tap to record")
+                                                .font(.caption)
+                                                .foregroundColor(.white.opacity(0.8))
                                         }
                                     }
+                                    .buttonStyle(ScaleButtonStyle())
                                     
-                                    Text("Tap the microphone to start recording")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.8))
+                                    if !whisperService.permissionGranted && whisperService.errorMessage != nil {
+                                        Text(whisperService.errorMessage ?? "Permission needed")
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                            .padding(.top, 4)
+                                    }
+                                    
+                                    if !whisperService.transcription.isEmpty {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Text("Transcription:")
+                                                .font(.caption)
+                                                .foregroundColor(.white.opacity(0.8))
+                                            
+                                            Text(whisperService.transcription)
+                                                .font(.body)
+                                                .foregroundColor(.white)
+                                                .padding()
+                                                .background(Color.white.opacity(0.15))
+                                                .cornerRadius(10)
+                                            
+                                            Button("Use This Text") {
+                                                note = whisperService.transcription
+                                                showRecordingUI = false // Switch to text mode
+                                                whisperService.resetState()
+                                            }
+                                            .font(.caption)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 6)
+                                            .background(Color.white.opacity(0.2))
+                                            .cornerRadius(12)
+                                            .padding(.top, 5)
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding()
+                                        .background(Color.white.opacity(0.1))
+                                        .cornerRadius(12)
+                                    }
                                 }
-                                .padding(.vertical, 30)
-                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 5)
                             } else {
-                                // Text input UI - simplified with no placeholder
+                                // Text input
                                 TextEditor(text: $note)
                                     .foregroundColor(.white)
                                     .scrollContentBackground(.hidden)
-                                    .background(Color.white.opacity(0.2))
-                                    .cornerRadius(15)
+                                    .background(Color.white.opacity(0.15))
+                                    .cornerRadius(10)
                                     .frame(minHeight: 120)
-                                    .padding(.horizontal)
-                                    .padding(.vertical, 10)
                             }
                         }
+                        .padding(.horizontal)
                         
-                        Spacer(minLength: 30)
+                        Spacer()
                         
-                        // Add to Timeline button
                         Button(action: {
-                            // Add to timeline
-                            userModel.addQuickUpdate(
-                                rating: showMoodRating ? Int(moodRating) : nil,
-                                note: note.isEmpty ? nil : note,
-                                audioURL: nil // Will be implemented with voice recording
-                            )
+                            // Save quick update
+                            userModel.addQuickUpdate(rating: moodRating, note: note.isEmpty ? nil : note)
                             
                             // Haptic feedback
                             let generator = UINotificationFeedbackGenerator()
                             generator.notificationOccurred(.success)
                             
-                            // Dismiss view
+                            // Navigate back
                             dismiss()
                         }) {
-                            Text("Add to Timeline")
-                                .font(.headline)
+                            Text("Save Update")
+                                .font(.body.weight(.medium))
                                 .foregroundColor(userModel.activeTheme.mainColor)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
+                                .frame(height: 50)
                                 .background(
                                     Capsule()
                                         .fill(.white)
@@ -1401,19 +1443,38 @@ struct QuickUpdateView: View {
                                 .padding(.horizontal)
                         }
                         .buttonStyle(ScaleButtonStyle())
-                        .padding(.bottom, 40)
+                        .padding(.vertical, 15)
                     }
+                    .padding(.vertical, 10)
                 }
+                .scrollIndicators(.hidden)
             }
         }
         .navigationBarHidden(true)
+        .onAppear {
+            whisperService.resetState()
+        }
+        .onDisappear {
+            if whisperService.isRecording {
+                whisperService.stopRecording()
+            }
+            whisperService.resetState()
+        }
     }
     
-    // Helper function to format current time
-    private func formattedTime() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: Date())
+    private func moodColor(for rating: Int) -> Color {
+        switch rating {
+        case 1...3:
+            return .red.opacity(0.7)
+        case 4...6:
+            return .yellow.opacity(0.7)
+        case 7...8:
+            return .green.opacity(0.7)
+        case 9...10:
+            return Color(hex: "00FF00").opacity(0.7) // Bright green
+        default:
+            return .green.opacity(0.7)
+        }
     }
 }
 
@@ -1425,7 +1486,7 @@ struct TimelineView: View {
     var body: some View {
         ZStack {
             // Background color
-            userModel.activeTheme.mainColor
+            Color(userModel.activeTheme.mainColor)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -1538,7 +1599,7 @@ struct TimelineEntryRow: View {
             // Time stamp
             HStack(alignment: .center) {
                 // Time
-                Text(formattedTime(date: entry.timestamp))
+                Text(formattedTime(date: entry.date))
                     .font(.headline)
                     .foregroundColor(.white)
                 

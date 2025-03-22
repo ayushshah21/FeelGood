@@ -27,12 +27,22 @@ struct ThemeGradient: Identifiable, Equatable {
 
 // Structure for mood entries
 struct MoodEntry: Identifiable, Codable {
-    var id: String = UUID().uuidString
+    var id = UUID()
+    var date: Date
     var rating: Int
     var note: String?
-    var audioURL: String?
-    var timestamp: Date
+    var audioURL: URL?
     var checkInType: CheckInType
+    var transcription: String?
+    
+    init(date: Date = Date(), rating: Int, note: String? = nil, audioURL: URL? = nil, checkInType: CheckInType, transcription: String? = nil) {
+        self.date = date
+        self.rating = rating
+        self.note = note
+        self.audioURL = audioURL
+        self.checkInType = checkInType
+        self.transcription = transcription
+    }
 }
 
 // Make CheckInType accessible outside MoodEntry
@@ -40,6 +50,13 @@ enum CheckInType: String, Codable {
     case morning
     case evening
     case quickUpdate
+}
+
+// Define timeline entry types
+enum TimelineEntryType: String, Codable {
+    case moodUpdate
+    case checkIn
+    case note
 }
 
 // Main user model for preferences and data
@@ -116,35 +133,53 @@ class UserModel: ObservableObject {
         }
     }
     
+    // Save data to persistent storage
+    func saveData() {
+        savePreferences()
+    }
+    
+    // Add an entry to the timeline
+    func addTimelineEntry(text: String, type: TimelineEntryType) {
+        // In the current implementation, this is handled through addQuickUpdate or addMoodEntry
+        // This method can be extended later if needed
+    }
+    
     // Add a new mood entry
-    func addMoodEntry(rating: Int, note: String? = nil, audioURL: String? = nil, checkInType: CheckInType) {
-        // Check if there's an existing entry for today with the same check-in type
-        if let index = getTodayEntryIndex(forType: checkInType) {
+    func addMoodEntry(rating: Int, note: String? = nil, audioURL: URL? = nil, transcription: String? = nil, checkInType: CheckInType = .morning) {
+        // Check if we already have an entry for today of the same type
+        if let index = moodEntries.firstIndex(where: { 
+            Calendar.current.isDate($0.date, inSameDayAs: Date()) && 
+            $0.checkInType == checkInType
+        }) {
             // Update existing entry
-            moodEntries[index] = MoodEntry(
-                id: moodEntries[index].id,
-                rating: rating,
-                note: note,
-                audioURL: audioURL,
-                timestamp: Date(),
-                checkInType: checkInType
-            )
+            moodEntries[index].rating = rating
+            moodEntries[index].note = note
+            
+            // Only update audio URL if provided
+            if let audioURL = audioURL {
+                moodEntries[index].audioURL = audioURL
+            }
+            
+            // Only update transcription if provided
+            if let transcription = transcription {
+                moodEntries[index].transcription = transcription
+            }
         } else {
             // Create new entry
             let newEntry = MoodEntry(
                 rating: rating,
                 note: note,
                 audioURL: audioURL,
-                timestamp: Date(),
-                checkInType: checkInType
+                checkInType: checkInType,
+                transcription: transcription
             )
-            
-            // Add to local array
             moodEntries.append(newEntry)
         }
         
-        // Save changes
-        savePreferences()
+        // Also add to timeline
+        addTimelineEntry(text: note ?? transcription ?? "Updated my mood to \(rating)/10", type: .moodUpdate)
+        
+        saveData()
     }
     
     // Get today's entry index for a specific check-in type (morning/evening)
@@ -153,7 +188,7 @@ class UserModel: ObservableObject {
         let today = calendar.startOfDay(for: Date())
         
         return moodEntries.firstIndex(where: { entry in
-            let entryDay = calendar.startOfDay(for: entry.timestamp)
+            let entryDay = calendar.startOfDay(for: entry.date)
             return calendar.isDate(entryDay, inSameDayAs: today) && entry.checkInType == type
         })
     }
@@ -172,14 +207,14 @@ class UserModel: ObservableObject {
         let today = calendar.startOfDay(for: Date())
         
         return moodEntries.filter { entry in
-            let entryDay = calendar.startOfDay(for: entry.timestamp)
+            let entryDay = calendar.startOfDay(for: entry.date)
             return calendar.isDate(entryDay, inSameDayAs: today)
         }.count
     }
     
     // Get the most recent entry
     func getLastEntry() -> MoodEntry? {
-        return moodEntries.sorted { $0.timestamp > $1.timestamp }.first
+        return moodEntries.sorted { $0.date > $1.date }.first
     }
     
     // Get today's entries
@@ -188,20 +223,20 @@ class UserModel: ObservableObject {
         let today = calendar.startOfDay(for: Date())
         
         return moodEntries.filter { entry in
-            let entryDay = calendar.startOfDay(for: entry.timestamp)
+            let entryDay = calendar.startOfDay(for: entry.date)
             return calendar.isDate(entryDay, inSameDayAs: today)
-        }.sorted { $0.timestamp > $1.timestamp }
+        }.sorted { $0.date > $1.date }
     }
     
     // Add a quick update to the timeline
-    func addQuickUpdate(rating: Int? = nil, note: String? = nil, audioURL: String? = nil) {
+    func addQuickUpdate(rating: Int? = nil, note: String? = nil, audioURL: URL? = nil) {
         // Create new entry with optional rating
         let newEntry = MoodEntry(
             rating: rating ?? 0, // Use 0 to indicate no rating provided
             note: note,
             audioURL: audioURL,
-            timestamp: Date(),
-            checkInType: .quickUpdate
+            checkInType: .quickUpdate,
+            transcription: nil
         )
         
         // Add to local array
@@ -218,12 +253,12 @@ class UserModel: ObservableObject {
         
         // Get all entries from today
         let todayEntries = moodEntries.filter { entry in
-            let entryDay = calendar.startOfDay(for: entry.timestamp)
+            let entryDay = calendar.startOfDay(for: entry.date)
             return calendar.isDate(entryDay, inSameDayAs: today)
         }
         
-        // Sort by timestamp in descending order (newest first)
-        return todayEntries.sorted { $0.timestamp > $1.timestamp }
+        // Sort by date in descending order (newest first)
+        return todayEntries.sorted { $0.date > $1.date }
     }
     
     // Get update count for the timeline
@@ -237,7 +272,7 @@ class UserModel: ObservableObject {
         let calendar = Calendar.current
         let startDate = calendar.date(byAdding: .day, value: -days, to: Date())!
         
-        let filteredEntries = moodEntries.filter { $0.timestamp >= startDate }
+        let filteredEntries = moodEntries.filter { $0.date >= startDate }
         
         guard !filteredEntries.isEmpty else { return 0 }
         
