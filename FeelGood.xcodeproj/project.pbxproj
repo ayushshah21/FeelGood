@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C8E056662D8F24B500C6421C /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = C8E056652D8F24B500C6421C /* FirebaseAnalytics */; };
+		C8E056682D8F24B500C6421C /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = C8E056672D8F24B500C6421C /* FirebaseAuth */; };
+		C8E0566A2D8F24B500C6421C /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C8E056692D8F24B500C6421C /* FirebaseCore */; };
+		C8E0566C2D8F24B500C6421C /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C8E0566B2D8F24B500C6421C /* FirebaseFirestore */; };
+		C8E0566E2D8F24B500C6421C /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C8E0566D2D8F24B500C6421C /* FirebaseStorage */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		C8A6722E2D8CA64700923FAF /* FeelGood.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FeelGood.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +31,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C8E056662D8F24B500C6421C /* FirebaseAnalytics in Frameworks */,
+				C8E0566C2D8F24B500C6421C /* FirebaseFirestore in Frameworks */,
+				C8E0566A2D8F24B500C6421C /* FirebaseCore in Frameworks */,
+				C8E0566E2D8F24B500C6421C /* FirebaseStorage in Frameworks */,
+				C8E056682D8F24B500C6421C /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +78,11 @@
 			);
 			name = FeelGood;
 			packageProductDependencies = (
+				C8E056652D8F24B500C6421C /* FirebaseAnalytics */,
+				C8E056672D8F24B500C6421C /* FirebaseAuth */,
+				C8E056692D8F24B500C6421C /* FirebaseCore */,
+				C8E0566B2D8F24B500C6421C /* FirebaseFirestore */,
+				C8E0566D2D8F24B500C6421C /* FirebaseStorage */,
 			);
 			productName = FeelGood;
 			productReference = C8A6722E2D8CA64700923FAF /* FeelGood.app */;
@@ -94,6 +112,9 @@
 			);
 			mainGroup = C8A672252D8CA64700923FAF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C8A6722F2D8CA64700923FAF /* Products */;
 			projectDirPath = "";
@@ -245,11 +266,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = FeelGood/FeelGood.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"FeelGood/Preview Content\"";
+				DEVELOPMENT_TEAM = 2W2BVPKTRW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "FeelGood needs microphone access to record your voice updates.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -282,11 +306,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = FeelGood/FeelGood.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"FeelGood/Preview Content\"";
+				DEVELOPMENT_TEAM = 2W2BVPKTRW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "FeelGood needs microphone access to record your voice updates.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -335,6 +362,45 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C8E056652D8F24B500C6421C /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		C8E056672D8F24B500C6421C /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		C8E056692D8F24B500C6421C /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		C8E0566B2D8F24B500C6421C /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		C8E0566D2D8F24B500C6421C /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C8A672262D8CA64700923FAF /* Project object */;
 }

@@ -9,16 +9,19 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var userModel: UserModel
+    @StateObject private var authViewModel = AuthViewModel()
     
     var body: some View {
         NavigationStack {
             if !userModel.isOnboarded {
                 OnboardingView()
+            } else if !authViewModel.isAuthenticated {
+                SignInView()
             } else {
                 MainTabView()
             }
         }
-        // Ensure the environment object is passed to the entire view hierarchy
+        // Ensure the environment objects are passed to the entire view hierarchy
         .environmentObject(userModel)
     }
 }
@@ -998,7 +1001,9 @@ struct SettingsView: View {
     @EnvironmentObject private var userModel: UserModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingResetConfirmation = false
+    @State private var showingLogoutConfirmation = false
     @State private var animateSelected = false
+    @StateObject private var authViewModel = AuthViewModel()
     
     var body: some View {
         NavigationStack {
@@ -1067,6 +1072,45 @@ struct SettingsView: View {
                         .cornerRadius(16)
                         .padding(.horizontal)
                         
+                        // Logout option
+                        Button(action: {
+                            showingLogoutConfirmation = true
+                        }) {
+                            HStack {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    .font(.headline)
+                                Text("Logout")
+                                    .font(.headline)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(16)
+                            .padding(.horizontal)
+                        }
+                        .buttonStyle(ScaleButtonStyle())
+                        .alert("Logout", isPresented: $showingLogoutConfirmation) {
+                            Button("Cancel", role: .cancel) { }
+                            Button("Logout", role: .destructive) {
+                                // Sign out user
+                                authViewModel.signOut()
+                                
+                                // Clear user ID from model
+                                userModel.userId = nil
+                                userModel.savePreferences()
+                                
+                                dismiss()
+                            }
+                        } message: {
+                            Text("Are you sure you want to logout?")
+                        }
+                        
                         // Reset onboarding option
                         Button(action: {
                             showingResetConfirmation = true
@@ -1084,7 +1128,7 @@ struct SettingsView: View {
                                     .foregroundColor(.white.opacity(0.7))
                             }
                             .foregroundColor(.white)
-        .padding()
+                            .padding()
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(16)
                             .padding(.horizontal)

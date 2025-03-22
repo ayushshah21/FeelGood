@@ -6,11 +6,17 @@
 //
 
 import SwiftUI
+import Firebase
 
 @main
 struct FeelGoodApp: App {
   // Create a shared instance of UserModel
   @StateObject private var userModel = UserModel()
+
+  init() {
+    // Initialize Firebase
+    FirebaseApp.configure()
+  }
 
   var body: some Scene {
     WindowGroup {

@@ -64,6 +64,7 @@ class UserModel: ObservableObject {
     @Published var isOnboarded: Bool = false
     @Published var selectedThemeIndex: Int = 0
     @Published var moodEntries: [MoodEntry] = []
+    @Published var userId: String? = nil  // Store Firebase user ID
     
     // Theme options with carefully selected soothing colors
     let themeGradients: [ThemeGradient] = [
@@ -114,6 +115,9 @@ class UserModel: ObservableObject {
             selectedThemeIndex = themeIndex < themeGradients.count ? themeIndex : 0
         }
         
+        // Load user ID if saved
+        userId = defaults.string(forKey: "userId")
+        
         // Load local mood entries if any
         if let savedEntriesData = UserDefaults.standard.data(forKey: "moodEntries"),
            let decodedEntries = try? JSONDecoder().decode([MoodEntry].self, from: savedEntriesData) {
@@ -126,6 +130,13 @@ class UserModel: ObservableObject {
         let defaults = UserDefaults.standard
         defaults.set(isOnboarded, forKey: "isOnboarded")
         defaults.set(selectedThemeIndex, forKey: "selectedThemeIndex")
+        
+        // Save userId if available
+        if let userId = userId {
+            defaults.set(userId, forKey: "userId")
+        } else {
+            defaults.removeObject(forKey: "userId")
+        }
         
         // Save mood entries locally
         if let encodedData = try? JSONEncoder().encode(moodEntries) {
