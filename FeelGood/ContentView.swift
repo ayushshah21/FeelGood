@@ -17,12 +17,15 @@ struct ContentView: View {
                 OnboardingView()
             } else if !authViewModel.isAuthenticated {
                 SignInView()
+                    .environmentObject(authViewModel)
             } else {
                 MainTabView()
+                    .environmentObject(authViewModel)
             }
         }
         // Ensure the environment objects are passed to the entire view hierarchy
         .environmentObject(userModel)
+        .environmentObject(authViewModel)
     }
 }
 
@@ -1059,11 +1062,12 @@ struct ScaleButtonStyle: ButtonStyle {
 // Settings View
 struct SettingsView: View {
     @EnvironmentObject private var userModel: UserModel
+    @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var showingResetConfirmation = false
     @State private var showingLogoutConfirmation = false
+    @State private var showingResetConfirmation = false
     @State private var animateSelected = false
-    @StateObject private var authViewModel = AuthViewModel()
+    @State private var showMockDataConfirmation = false
     
     var body: some View {
         NavigationStack {
@@ -1131,6 +1135,38 @@ struct SettingsView: View {
                         .background(Color.white.opacity(0.2))
                         .cornerRadius(16)
                         .padding(.horizontal)
+                        
+                        // Generate Mock Data button (temporary)
+                        Button(action: {
+                            showMockDataConfirmation = true
+                        }) {
+                            HStack {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.headline)
+                                Text("Generate Mock Data")
+                                    .font(.headline)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(16)
+                            .padding(.horizontal)
+                        }
+                        .buttonStyle(ScaleButtonStyle())
+                        .alert("Generate Mock Data?", isPresented: $showMockDataConfirmation) {
+                            Button("Cancel", role: .cancel) { }
+                            Button("Generate", role: .destructive) {
+                                userModel.generateMockMoodData()
+                            }
+                        } message: {
+                            Text("This will replace all existing mood data with mock data for testing.")
+                        }
                         
                         // Logout option
                         Button(action: {

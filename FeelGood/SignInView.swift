@@ -10,7 +10,7 @@ import Firebase
 
 struct SignInView: View {
     @EnvironmentObject private var userModel: UserModel
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject private var authViewModel: AuthViewModel
     
     @State private var email = ""
     @State private var password = ""
@@ -143,6 +143,7 @@ struct SignInView: View {
         .fullScreenCover(isPresented: $showSignUp) {
             SignUpView()
                 .environmentObject(userModel)
+                .environmentObject(authViewModel)
         }
     }
 }

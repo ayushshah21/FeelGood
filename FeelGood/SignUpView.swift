@@ -10,7 +10,7 @@ import Firebase
 
 struct SignUpView: View {
     @EnvironmentObject private var userModel: UserModel
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
     
     @State private var email = ""
