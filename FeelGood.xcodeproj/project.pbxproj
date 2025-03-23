@@ -7,20 +7,34 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C8E056662D8F24B500C6421C /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = C8E056652D8F24B500C6421C /* FirebaseAnalytics */; };
-		C8E056682D8F24B500C6421C /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = C8E056672D8F24B500C6421C /* FirebaseAuth */; };
-		C8E0566A2D8F24B500C6421C /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C8E056692D8F24B500C6421C /* FirebaseCore */; };
-		C8E0566C2D8F24B500C6421C /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C8E0566B2D8F24B500C6421C /* FirebaseFirestore */; };
-		C8E0566E2D8F24B500C6421C /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C8E0566D2D8F24B500C6421C /* FirebaseStorage */; };
+		C862EE492D8F85200038F401 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = C862EE482D8F85200038F401 /* FirebaseAnalytics */; };
+		C862EE4B2D8F85200038F401 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = C862EE4A2D8F85200038F401 /* FirebaseAuth */; };
+		C862EE4D2D8F85200038F401 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C862EE4C2D8F85200038F401 /* FirebaseCore */; };
+		C862EE4F2D8F85200038F401 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C862EE4E2D8F85200038F401 /* FirebaseFirestore */; };
+		C862EE512D8F85200038F401 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C862EE502D8F85200038F401 /* FirebaseStorage */; };
+		C862EE542D8F8B8F0038F401 /* Vapi in Frameworks */ = {isa = PBXBuildFile; productRef = C862EE532D8F8B8F0038F401 /* Vapi */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		C8A6722E2D8CA64700923FAF /* FeelGood.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FeelGood.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C862EE582D906D340038F401 /* Exceptions for "FeelGood" folder in "FeelGood" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C8A6722D2D8CA64700923FAF /* FeelGood */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C8A672302D8CA64700923FAF /* FeelGood */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C862EE582D906D340038F401 /* Exceptions for "FeelGood" folder in "FeelGood" target */,
+			);
 			path = FeelGood;
 			sourceTree = "<group>";
 		};
@@ -31,11 +45,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C8E056662D8F24B500C6421C /* FirebaseAnalytics in Frameworks */,
-				C8E0566C2D8F24B500C6421C /* FirebaseFirestore in Frameworks */,
-				C8E0566A2D8F24B500C6421C /* FirebaseCore in Frameworks */,
-				C8E0566E2D8F24B500C6421C /* FirebaseStorage in Frameworks */,
-				C8E056682D8F24B500C6421C /* FirebaseAuth in Frameworks */,
+				C862EE492D8F85200038F401 /* FirebaseAnalytics in Frameworks */,
+				C862EE4F2D8F85200038F401 /* FirebaseFirestore in Frameworks */,
+				C862EE542D8F8B8F0038F401 /* Vapi in Frameworks */,
+				C862EE4D2D8F85200038F401 /* FirebaseCore in Frameworks */,
+				C862EE512D8F85200038F401 /* FirebaseStorage in Frameworks */,
+				C862EE4B2D8F85200038F401 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,11 +93,12 @@
 			);
 			name = FeelGood;
 			packageProductDependencies = (
-				C8E056652D8F24B500C6421C /* FirebaseAnalytics */,
-				C8E056672D8F24B500C6421C /* FirebaseAuth */,
-				C8E056692D8F24B500C6421C /* FirebaseCore */,
-				C8E0566B2D8F24B500C6421C /* FirebaseFirestore */,
-				C8E0566D2D8F24B500C6421C /* FirebaseStorage */,
+				C862EE482D8F85200038F401 /* FirebaseAnalytics */,
+				C862EE4A2D8F85200038F401 /* FirebaseAuth */,
+				C862EE4C2D8F85200038F401 /* FirebaseCore */,
+				C862EE4E2D8F85200038F401 /* FirebaseFirestore */,
+				C862EE502D8F85200038F401 /* FirebaseStorage */,
+				C862EE532D8F8B8F0038F401 /* Vapi */,
 			);
 			productName = FeelGood;
 			productReference = C8A6722E2D8CA64700923FAF /* FeelGood.app */;
@@ -113,7 +129,8 @@
 			mainGroup = C8A672252D8CA64700923FAF;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				C862EE472D8F85200038F401 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				C862EE522D8F8B8F0038F401 /* XCRemoteSwiftPackageReference "ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C8A6722F2D8CA64700923FAF /* Products */;
@@ -273,6 +290,7 @@
 				DEVELOPMENT_TEAM = 2W2BVPKTRW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FeelGood/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "FeelGood needs microphone access to record your voice updates.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -313,6 +331,7 @@
 				DEVELOPMENT_TEAM = 2W2BVPKTRW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FeelGood/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "FeelGood needs microphone access to record your voice updates.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -364,7 +383,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+		C862EE472D8F85200038F401 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
 			requirement = {
@@ -372,33 +391,46 @@
 				minimumVersion = 11.10.0;
 			};
 		};
+		C862EE522D8F8B8F0038F401 /* XCRemoteSwiftPackageReference "ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/VapiAI/ios";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		C8E056652D8F24B500C6421C /* FirebaseAnalytics */ = {
+		C862EE482D8F85200038F401 /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			package = C862EE472D8F85200038F401 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
 		};
-		C8E056672D8F24B500C6421C /* FirebaseAuth */ = {
+		C862EE4A2D8F85200038F401 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			package = C862EE472D8F85200038F401 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
 		};
-		C8E056692D8F24B500C6421C /* FirebaseCore */ = {
+		C862EE4C2D8F85200038F401 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			package = C862EE472D8F85200038F401 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
 		};
-		C8E0566B2D8F24B500C6421C /* FirebaseFirestore */ = {
+		C862EE4E2D8F85200038F401 /* FirebaseFirestore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			package = C862EE472D8F85200038F401 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
 		};
-		C8E0566D2D8F24B500C6421C /* FirebaseStorage */ = {
+		C862EE502D8F85200038F401 /* FirebaseStorage */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8E056642D8F24B500C6421C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			package = C862EE472D8F85200038F401 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		C862EE532D8F8B8F0038F401 /* Vapi */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C862EE522D8F8B8F0038F401 /* XCRemoteSwiftPackageReference "ios" */;
+			productName = Vapi;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

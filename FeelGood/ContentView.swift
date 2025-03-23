@@ -51,6 +51,14 @@ struct MainTabView: View {
                 }
                 
                 NavigationStack {
+                    BobbyAssistantView()
+                }
+                .tabItem {
+                    Image(systemName: "waveform")
+                    Text("Bobby")
+                }
+                
+                NavigationStack {
                     Text("Insights View")
                         .font(.title)
                         .foregroundColor(.white)
