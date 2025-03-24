@@ -62,15 +62,7 @@ struct MainTabView: View {
                 }
                 
                 NavigationStack {
-                    Text("Insights View")
-                        .font(.title)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(
-                            Color(userModel.activeTheme.mainColor)
-                                .ignoresSafeArea()
-                        )
-                        .navigationTitle("Insights")
+                    InsightsDashboardView()
                 }
                 .tabItem {
                     Image(systemName: "chart.bar.fill")
