@@ -64,7 +64,7 @@ struct InsightsDashboardView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .padding(.horizontal)
+            .frame(maxWidth: .infinity)
             .background(Color.white.opacity(0.2))
             .cornerRadius(8)
             .tint(.white)
