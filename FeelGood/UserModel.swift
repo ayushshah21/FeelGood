@@ -201,20 +201,33 @@ class UserModel: ObservableObject {
     
     // Fetch mood entries from Firestore
     private func fetchMoodEntries(userId: String) {
+        print("🔍 fetchMoodEntries: Starting fetch for user \(userId)")
+        
         db.collection("users").document(userId).collection("mood_logs")
             .order(by: "date", descending: true)
             .getDocuments { [weak self] querySnapshot, error in
                 self?.isLoadingData = false
-                
                 if let error = error {
+                    print("❌ fetchMoodEntries: Error fetching data: \(error.localizedDescription)")
                     self?.syncError = "Error fetching mood entries: \(error.localizedDescription)"
                     return
                 }
                 
-                guard let documents = querySnapshot?.documents, !documents.isEmpty else {
+                guard let documents = querySnapshot?.documents else {
+                    print("❌ fetchMoodEntries: No documents found (querySnapshot.documents is nil)")
+                    return
+                }
+                
+                print("📊 fetchMoodEntries: Received \(documents.count) documents from Firestore")
+                
+                if documents.isEmpty {
+                    print("⚠️ fetchMoodEntries: No entries yet in Firestore")
                     // No entries yet in Firestore, upload local entries if any
                     if let self = self, !self.moodEntries.isEmpty {
+                        print("🔄 fetchMoodEntries: Found \(self.moodEntries.count) local entries, syncing to Firestore")
                         self.syncMoodEntriesToFirestore()
+                    } else {
+                        print("⚠️ fetchMoodEntries: No local entries to sync")
                     }
                     return
                 }
@@ -242,20 +255,34 @@ class UserModel: ObservableObject {
                         )
                         
                         firestoreEntries.append(entry)
+                    } else {
+                        print("⚠️ fetchMoodEntries: Skipping document \(document.documentID) due to missing or invalid fields")
+                        // Debug the document content
+                        print("Document data: \(data)")
                     }
                 }
+                
+                print("✅ fetchMoodEntries: Successfully parsed \(firestoreEntries.count) entries from Firestore")
                 
                 // If we have entries from Firestore, use them
                 if !firestoreEntries.isEmpty {
                     self?.moodEntries = firestoreEntries
                     self?.savePreferences() // Save to local storage as backup
+                    print("💾 fetchMoodEntries: Updated local moodEntries array and saved to preferences")
+                } else {
+                    print("⚠️ fetchMoodEntries: No valid entries found in Firestore documents")
                 }
             }
     }
     
     // Sync current mood entries to Firestore
     private func syncMoodEntriesToFirestore() {
-        guard let userId = userId else { return }
+        guard let userId = userId else {
+            print("❌ syncMoodEntriesToFirestore: Cannot sync - userId is nil")
+            return
+        }
+        
+        print("🔄 syncMoodEntriesToFirestore: Starting sync for user \(userId)")
         
         let batch = db.batch()
         
@@ -284,7 +311,10 @@ class UserModel: ObservableObject {
         // Commit the batch
         batch.commit { [weak self] error in
             if let error = error {
+                print("❌ syncMoodEntriesToFirestore: Error syncing data: \(error.localizedDescription)")
                 self?.syncError = "Error syncing mood entries: \(error.localizedDescription)"
+            } else {
+                print("✅ syncMoodEntriesToFirestore: Successfully synced \(self?.moodEntries.count ?? 0) entries")
             }
         }
     }
@@ -483,23 +513,58 @@ class UserModel: ObservableObject {
     
     // Get timeline entries for today
     func getTimelineEntries() -> [MoodEntry] {
+        return getTimelineEntries(for: Date())
+    }
+    
+    // Get timeline entries for a specific date
+    func getTimelineEntries(for date: Date) -> [MoodEntry] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        let targetDay = calendar.startOfDay(for: date)
         
-        // Get all entries from today
-        let todayEntries = moodEntries.filter { entry in
+        // Get all entries from the specified date
+        let dateEntries = moodEntries.filter { entry in
             let entryDay = calendar.startOfDay(for: entry.date)
-            return calendar.isDate(entryDay, inSameDayAs: today)
+            return calendar.isDate(entryDay, inSameDayAs: targetDay)
         }
         
         // Sort by date in descending order (newest first)
-        return todayEntries.sorted { $0.date > $1.date }
+        return dateEntries.sorted { $0.date > $1.date }
     }
     
     // Get update count for the timeline
     func getTimelineUpdateCount() -> Int {
-        // This returns the actual count of all meaningful entries
+        // This returns the actual count of all meaningful entries for today
         return getTimelineEntries().count
+    }
+    
+    // Get update count for a specific date
+    func getTimelineUpdateCount(for date: Date) -> Int {
+        // This returns the actual count of all meaningful entries for the specified date
+        return getTimelineEntries(for: date).count
+    }
+    
+    // Get entries for a specific date and type
+    func getEntries(for date: Date, type: CheckInType?) -> [MoodEntry] {
+        let calendar = Calendar.current
+        let targetDay = calendar.startOfDay(for: date)
+        
+        return moodEntries.filter { entry in
+            let entryDay = calendar.startOfDay(for: entry.date)
+            if let type = type {
+                return calendar.isDate(entryDay, inSameDayAs: targetDay) && entry.checkInType == type
+            } else {
+                return calendar.isDate(entryDay, inSameDayAs: targetDay)
+            }
+        }.sorted { $0.date > $1.date }
+    }
+    
+    // Get average mood for a date
+    func getAverageMood(for date: Date) -> Double? {
+        let entries = getEntries(for: date, type: nil)
+        guard !entries.isEmpty else { return nil }
+        
+        let sum = entries.reduce(0) { $0 + $1.rating }
+        return Double(sum) / Double(entries.count)
     }
     
     // Get average mood for a specific time period
@@ -513,6 +578,202 @@ class UserModel: ObservableObject {
         
         let sum = filteredEntries.reduce(0) { $0 + $1.rating }
         return Double(sum) / Double(filteredEntries.count)
+    }
+    
+    // Generate mock mood data for testing
+    func generateMockMoodData() {
+        print("🔍 Starting generateMockMoodData")
+        
+        // Check if user is signed in
+        guard let userId = userId else {
+            print("❌ Error: userId is nil - user not signed in")
+            syncError = "Error: Not signed in. Please sign in to generate mock data."
+            return
+        }
+        
+        print("✅ User is signed in with userId: \(userId)")
+        
+        // Clear existing entries first
+        moodEntries.removeAll()
+        
+        // Create a calendar for date manipulation
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        // Mock data for March 13-22, 2025
+        let mockData: [(date: String, morning: (rating: Int, note: String?), evening: (rating: Int, note: String?), quickUpdates: [(time: String, rating: Int, note: String)])] = [
+            // March 13 (Thursday) - Heavy CS theory day
+            (date: "2025-03-13", 
+             morning: (5, "Another day of classes I don't care about. Dreading the algorithms lecture."),
+             evening: (6, "At least the day is over. Studied with Sarah which made it slightly better."),
+             quickUpdates: [("14:30", 3, "Just got my programming assignment back. I put in so many hours and only got a B-. Starting to think I'm not cut out for this.")]),
+            
+            // March 14 (Friday) - Presentation day
+            (date: "2025-03-14",
+             morning: (4, "Have to present in CS class today. Honestly don't even understand what I'm talking about."),
+             evening: (7, "Friday night! Going out with friends. At least the weekend is here."),
+             quickUpdates: []),
+             
+            // March 15 (Saturday) - Weekend but with project work
+            (date: "2025-03-15",
+             morning: (6, "No classes today, but have to work on this programming project that makes no sense to me."),
+             evening: (8, "Hung out at the lake with friends. Wish life could be more like this and less coding."),
+             quickUpdates: [("16:00", 7, "Taking a break from coding. Maybe I should explore other majors...")]),
+             
+            // March 16 (Sunday) - Reflection day
+            (date: "2025-03-16",
+             morning: (5, "Thinking about talking to my advisor about switching majors. Feel so lost."),
+             evening: (6, "Looked at some psychology courses online. They actually seem interesting."),
+             quickUpdates: []),
+             
+            // March 17 (Monday) - Start of new week
+            (date: "2025-03-17",
+             morning: (4, "Monday again. Can't focus in Data Structures class."),
+             evening: (5, "Tried to do the coding homework but just felt overwhelmed."),
+             quickUpdates: [("13:15", 3, "Failed another pop quiz in CS. When will this get easier?")]),
+             
+            // March 18 (Tuesday) - Slightly better day
+            (date: "2025-03-18",
+             morning: (5, "At least today's classes are more manageable."),
+             evening: (6, "Had a good conversation with my roommate about maybe switching to Business major."),
+             quickUpdates: []),
+             
+            // March 19 (Wednesday) - Mixed feelings
+            (date: "2025-03-19",
+             morning: (5, "Had a dream I switched to psychology. Woke up feeling confused about my future."),
+             evening: (6, "Talked to my advisor about possibly exploring other classes next semester. Still uncertain."),
+             quickUpdates: [("15:45", 7, "Art history elective was actually interesting today. First time I've been engaged in class all week.")]),
+             
+            // March 20 (Thursday) - Group project day
+            (date: "2025-03-20",
+             morning: (4, "Group project meeting for CS today. I feel like everyone knows more than me."),
+             evening: (5, "My part of the project is due tomorrow and I'm struggling to understand the requirements."),
+             quickUpdates: [("14:00", 3, "My group members seem frustrated with my lack of progress.")]),
+             
+            // March 21 (Friday) - End of week reflection
+            (date: "2025-03-21",
+             morning: (5, "Last day of the week. Just need to get through this."),
+             evening: (7, "Weekend plans with non-CS friends! Need this break from thinking about code."),
+             quickUpdates: [("12:30", 4, "Professor asked why I've been so quiet in class lately.")]),
+             
+            // March 22 (Saturday) - Weekend relief
+            (date: "2025-03-22",
+             morning: (6, "No coding today. Going to explore some other interests."),
+             evening: (8, "Spent the day at an art museum. Haven't felt this peaceful in weeks."),
+             quickUpdates: [("15:00", 7, "Found some interesting psychology podcasts. Maybe this is a sign?")])
+        ]
+        
+        // Date formatter for parsing mock dates
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        
+        // Time formatter for quick updates
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm"
+        
+        // Generate entries from mock data
+        for dayData in mockData {
+            // Get base date from string
+            guard let baseDate = dateFormatter.date(from: dayData.date) else { continue }
+            
+            // Morning entry (8 AM)
+            let morningDate = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: baseDate)!
+            let morningEntry = MoodEntry(
+                date: morningDate,
+                rating: dayData.morning.rating,
+                note: dayData.morning.note,
+                checkInType: .morning
+            )
+            moodEntries.append(morningEntry)
+            
+            // Evening entry (8 PM)
+            let eveningDate = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: baseDate)!
+            let eveningEntry = MoodEntry(
+                date: eveningDate,
+                rating: dayData.evening.rating,
+                note: dayData.evening.note,
+                checkInType: .evening
+            )
+            moodEntries.append(eveningEntry)
+            
+            // Quick updates throughout the day
+            for quickUpdate in dayData.quickUpdates {
+                guard let time = timeFormatter.date(from: quickUpdate.time) else { continue }
+                let quickUpdateDate = calendar.date(
+                    bySettingHour: calendar.component(.hour, from: time),
+                    minute: calendar.component(.minute, from: time),
+                    second: 0,
+                    of: baseDate
+                )!
+                
+                let quickUpdateEntry = MoodEntry(
+                    date: quickUpdateDate,
+                    rating: quickUpdate.rating,
+                    note: quickUpdate.note,
+                    checkInType: .quickUpdate
+                )
+                moodEntries.append(quickUpdateEntry)
+            }
+        }
+        
+        // Sort entries by date (newest first)
+        moodEntries.sort { $0.date > $1.date }
+        
+        // Save to local storage
+        saveData()
+        
+        print("📝 Created \(moodEntries.count) mood entries locally, preparing to sync to Firestore")
+        
+        // Show loading indicator
+        isLoadingData = true
+        
+        // Sync to Firestore with completion handler
+        let batch = db.batch()
+        
+        for entry in moodEntries {
+            let entryRef = db.collection("users").document(userId).collection("mood_logs").document(entry.id.uuidString)
+            
+            // Convert MoodEntry to Firestore data
+            var entryData: [String: Any] = [
+                "date": Timestamp(date: entry.date),
+                "rating": entry.rating,
+                "checkInType": entry.checkInType.rawValue
+            ]
+            
+            // Add optional fields
+            if let note = entry.note {
+                entryData["note"] = note
+            }
+            
+            if let transcription = entry.transcription {
+                entryData["transcription"] = transcription
+            }
+            
+            batch.setData(entryData, forDocument: entryRef)
+        }
+        
+        print("🔄 Committing batch with \(moodEntries.count) entries to Firestore...")
+        
+        // Commit the batch
+        batch.commit { [weak self] error in
+            DispatchQueue.main.async {
+                self?.isLoadingData = false
+                
+                if let error = error {
+                    print("❌ Error syncing mock data to Firestore: \(error.localizedDescription)")
+                    self?.syncError = "Error syncing mock data: \(error.localizedDescription)"
+                } else {
+                    print("✅ Successfully synced mock data to Firestore")
+                    // Verify the data was saved by fetching it
+                    if let userId = self?.userId {
+                        print("🔍 Verifying data by fetching from Firestore...")
+                        self?.fetchMoodEntries(userId: userId)
+                    } else {
+                        print("❌ Cannot verify data - userId is nil after sync")
+                    }
+                }
+            }
+        }
     }
 }
 

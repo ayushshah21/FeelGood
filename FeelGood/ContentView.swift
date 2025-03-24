@@ -506,14 +506,14 @@ struct HomeView: View {
                     
                     // Action buttons
                     VStack(spacing: 16) {
-                        // Edit Morning Mood
+                        // Morning Check-in
                         NavigationLink(destination: CheckInView(checkInType: .morning, isEditing: true)) {
                             HStack {
                                 Image(systemName: "sunrise")
                                     .font(.system(size: 22))
                                     .foregroundColor(.white)
                                 
-                                Text("Edit Morning Mood")
+                                Text("Morning Check-in")
                                     .font(.system(size: 20, weight: .medium))
                                     .foregroundColor(.white)
                                 
@@ -1616,6 +1616,8 @@ struct QuickUpdateView: View {
 struct TimelineView: View {
     @EnvironmentObject private var userModel: UserModel
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedDate = Date()
+    @State private var showCalendar = false
     
     var body: some View {
         ZStack {
@@ -1636,30 +1638,67 @@ struct TimelineView: View {
                     
                     Spacer()
                     
-                    Text("Today's Timeline")
+                    Text(isToday ? "Today's Timeline" : "Timeline")
                         .font(.headline)
                         .foregroundColor(.white)
                     
                     Spacer()
                     
-                    // Empty space for visual balance
-                    Image(systemName: "chevron.left")
-                        .font(.title3)
-                        .foregroundColor(.clear)
+                    // Calendar button
+                    Button(action: {
+                        showCalendar.toggle()
+                    }) {
+                        Image(systemName: "calendar")
+                            .font(.title3)
+                            .foregroundColor(.white)
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.top, 10)
                 
-                // Date and update count
+                // Date navigation and update count
                 HStack {
-                    Text(formattedDate())
-                        .font(.title3)
-                        .foregroundColor(.white)
+                    // Date navigation controls
+                    HStack(spacing: 15) {
+                        // Previous day button
+                        Button(action: {
+                            goToPreviousDay()
+                        }) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Circle().fill(Color.white.opacity(0.2)))
+                        }
+                        
+                        // Date display with tap to show calendar
+                        Button(action: {
+                            showCalendar.toggle()
+                        }) {
+                            Text(formattedDate())
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.white)
+                        }
+                        
+                        // Next day button (disabled if it's today)
+                        Button(action: {
+                            goToNextDay()
+                        }) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Circle().fill(Color.white.opacity(0.2)))
+                        }
+                        .disabled(isToday)
+                        .opacity(isToday ? 0.5 : 1.0)
+                    }
                     
                     Spacer()
                     
                     // Use proper pluralization for updates count
-                    if userModel.getTimelineUpdateCount() == 1 {
+                    let count = userModel.getTimelineUpdateCount(for: selectedDate)
+                    if count == 1 {
                         Text("1 update")
                             .font(.subheadline)
                             .foregroundColor(.white.opacity(0.8))
@@ -1668,7 +1707,7 @@ struct TimelineView: View {
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(15)
                     } else {
-                        Text("\(userModel.getTimelineUpdateCount()) updates")
+                        Text("\(count) updates")
                             .font(.subheadline)
                             .foregroundColor(.white.opacity(0.8))
                             .padding(.horizontal, 12)
@@ -1681,37 +1720,124 @@ struct TimelineView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 15)
                 
+                // Today button (only visible when not on today)
+                if !isToday {
+                    Button(action: {
+                        withAnimation {
+                            selectedDate = Date()
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.uturn.backward")
+                                .font(.system(size: 12))
+                            Text("Today")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(userModel.activeTheme.mainColor)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(.white))
+                    }
+                    .padding(.bottom, 6)
+                }
+                
                 // Timeline entries with floating button
                 ZStack(alignment: .bottomTrailing) {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            ForEach(userModel.getTimelineEntries()) { entry in
-                                TimelineEntryRow(entry: entry)
+                    if userModel.getTimelineEntries(for: selectedDate).isEmpty {
+                        // Empty state
+                        VStack(spacing: 16) {
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.system(size: 60))
+                                .foregroundColor(.white.opacity(0.4))
+                                .padding(.bottom, 10)
+                            
+                            Text("No entries for this date")
+                                .font(.title3)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white.opacity(0.8))
+                            
+                            if !isToday {
+                                Text("Try another date or add an entry to today's timeline")
+                                    .font(.subheadline)
+                                    .multilineTextAlignment(.center)
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .padding(.horizontal, 20)
                             }
                         }
-                        .padding(.bottom, 100) // Add padding for floating button
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    
-                    // Floating add button
-                    NavigationLink(destination: QuickUpdateView()) {
-                        ZStack {
-                            Circle()
-                                .fill(.white)
-                                .frame(width: 60, height: 60)
-                                .shadow(color: .black.opacity(0.15), radius: 5)
-                            
-                            Image(systemName: "plus")
-                                .font(.title2)
-                                .foregroundColor(userModel.activeTheme.mainColor)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.bottom, 80)
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(userModel.getTimelineEntries(for: selectedDate)) { entry in
+                                    TimelineEntryRow(entry: entry)
+                                }
+                            }
+                            .padding(.bottom, 100) // Add padding for floating button
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .buttonStyle(ScaleButtonStyle())
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 20)
+                    
+                    // Only show floating add button when viewing today
+                    if isToday {
+                        NavigationLink(destination: QuickUpdateView()) {
+                            ZStack {
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: 60, height: 60)
+                                    .shadow(color: .black.opacity(0.15), radius: 5)
+                                
+                                Image(systemName: "plus")
+                                    .font(.title2)
+                                    .foregroundColor(userModel.activeTheme.mainColor)
+                            }
+                        }
+                        .buttonStyle(ScaleButtonStyle())
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            
+            // Date picker overlay
+            if showCalendar {
+                ZStack {
+                    Color.black.opacity(0.4)
+                        .edgesIgnoringSafeArea(.all)
+                        .onTapGesture {
+                            showCalendar = false
+                        }
+                    
+                    VStack {
+                        // Calendar header
+                        HStack {
+                            Text("Select Date")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            Button("Done") {
+                                showCalendar = false
+                            }
+                            .foregroundColor(userModel.activeTheme.mainColor)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 16)
+                        
+                        // Date picker
+                        DatePicker("", selection: $selectedDate, in: ...Date(), displayedComponents: .date)
+                            .datePickerStyle(.graphical)
+                            .tint(Color(userModel.activeTheme.mainColor))
+                            .padding()
+                    }
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(.systemBackground)))
+                    .padding()
+                }
+                .transition(.opacity)
+                .animation(.easeInOut, value: showCalendar)
+            }
         }
         .navigationBarHidden(true)
     }
@@ -1720,7 +1846,30 @@ struct TimelineView: View {
     private func formattedDate() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM d, yyyy"
-        return formatter.string(from: Date())
+        return formatter.string(from: selectedDate)
+    }
+    
+    // Check if selected date is today
+    private var isToday: Bool {
+        Calendar.current.isDateInToday(selectedDate)
+    }
+    
+    // Go to previous day
+    private func goToPreviousDay() {
+        withAnimation {
+            if let newDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) {
+                selectedDate = newDate
+            }
+        }
+    }
+    
+    // Go to next day (should be disabled if it's today)
+    private func goToNextDay() {
+        withAnimation {
+            if !isToday, let newDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) {
+                selectedDate = newDate
+            }
+        }
     }
 }
 

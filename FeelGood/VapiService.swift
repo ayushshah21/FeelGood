@@ -16,10 +16,9 @@ class VapiService: ObservableObject {
     private let assistantId: String
     
     init() {
-        // In production, these would be loaded from a secure configuration
-        // that is not committed to version control
-        self.vapiKey = "your-vapi-key-here" // Placeholder - real key loaded from secure storage
-        self.assistantId = "your-assistant-id-here" // Placeholder - real ID loaded from secure storage
+        // Load the real keys from APIConfig
+        self.vapiKey = APIConfig.vapiPublicKey
+        self.assistantId = APIConfig.vapiAssistantId
         setupVapi()
     }
     
@@ -67,12 +66,12 @@ class VapiService: ObservableObject {
         Task {
             do {
                 isLoading = true
-                print("Starting call with assistant")
+                print("Starting call with assistant ID: \(assistantId)")
                 try await vapi?.start(assistantId: assistantId)
             } catch {
                 print("Failed to start call: \(error.localizedDescription)")
                 self.error = error.localizedDescription
-                isLoading = false
+                self.isLoading = false
             }
         }
     }
